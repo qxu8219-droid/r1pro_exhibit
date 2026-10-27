@@ -1,0 +1,52 @@
+实时相机一键启动
+
+唯一启动文件：start_live.sh
+默认机器人：172.18.21.239
+默认 SSH 用户：nvidia
+展示地址：http://127.0.0.1:8771/?source=live
+
+使用
+1. 机器人开机，电脑与机器人网络互通；机器人已安装原有 live_stream 工具。
+2. 在项目根目录运行 ./start_live.sh，或在文件管理器中选择“在终端运行”。
+3. 相机接口未运行时，脚本自动通过 SSH 执行机器人已有 start_bridge.sh。
+   若终端提示 password，输入机器人账号的 SSH 密码。输入时不显示字符是正常的。
+   项目不保存密码；已配置可用 SSH 密钥时不需要输入密码。
+4. 等待三路有效画面。脚本随后接收快照、启动展示服务、自动打开实时观察。
+5. 保持终端开启。Ctrl+C 停止电脑端接收及本次新启动的展示服务。
+   已启动的机器人相机桥保持运行；不会在退出时关闭它。
+
+参数
+./start_live.sh --robot-ip 172.18.21.239
+./start_live.sh --robot-user nvidia --ssh-port 22
+./start_live.sh --port 8773
+./start_live.sh --no-browser
+
+只接收，不执行 SSH 启动
+./start_live.sh --no-ssh
+
+只检查当前画面，不执行 SSH、不写快照、不启动任何服务
+./start_live.sh --check
+
+机器人已有启动脚本的默认路径
+/home/nvidia/r1pro_ws/vision_event_capture/live_stream/start_bridge.sh
+如安装路径不同，用 --bridge-script /实际绝对路径/start_bridge.sh 指定。
+原版机器人启动脚本固定使用8772端口；其他相机服务端口可配合 --robot-port 和 --no-ssh 使用。
+
+执行边界
+- 端口已运行：直接等待画面，不执行机器人重启脚本。
+- 端口未运行：每次启动最多尝试一次 SSH 启动；机器人端再次检查健康接口和TCP监听，避免健康检查暂时失败时误重启。
+- 接口返回空快照：等待出帧并提示相机尚未就绪，不反复重启。
+- 运行中断流：继续尝试读取，旧画面按原始时间过期；不会在后台反复执行 SSH。
+- SSH 使用系统 OpenSSH，保留主机密钥检查，不保存密码。首次连接可能需要核对主机指纹。
+- 只调用机器人已安装的相机桥脚本，不安装软件、不修改源码或配置、不启动 VLA 或动作。
+- 机器人原有脚本会生成 /tmp/live_bridge.log 和 /tmp/vision_live/snapshot.json 等运行文件。
+- 本机快照为 ~/r1pro_live/snapshot.json；约每秒一帧，保留机器人原始采集时间。
+
+故障提示
+Connection refused：相机端口未监听，正常启动会尝试 SSH 启动已有相机桥。
+Permission denied：检查 SSH 用户名、密码或密钥。
+脚本不存在：检查 --bridge-script 路径；程序不会上传或安装机器人文件。
+空快照 / bytes:2：桥已运行但相机未出帧，查看机器人原有日志和相机状态。
+时间过期或超前：检查画面更新和两端时钟。
+端口冲突：换 --port 8773，或先关闭原展示服务；不会强杀其它程序。
+重复启动：使用已有窗口；同一个快照文件只允许一个本机接收启动器。

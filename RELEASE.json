@@ -16,5 +16,7 @@
   "model_api_configured": false,
   "runtime_databases_included": false,
   "handbook": "R1_Exhibition_Handbook.docx",
-  "platform_validation": "macOS Chrome; Windows/Linux launch paths reviewed, not hardware-tested"
+  "platform_validation": "Linux Chrome automated regression; physical vehicle integration pending",
+  "live_camera_launcher": "start_live.sh",
+  "remote_camera_start": "SSH runs existing start_bridge.sh only when camera port is unavailable; interactive credentials, no source/config editing"
 }

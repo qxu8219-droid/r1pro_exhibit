@@ -7,15 +7,17 @@
 2. **模型推理回放**：`replay_panel/` 生成的真机 run 回放（三路相机、动作预测、下发目标与执行反馈、时延、事件时间轴），放在 `static/replays/` 里即可被列出。
 3. **展会主屏**：放大头部与双腕的真实记录帧，旁边展示同次运行的任务、动作模型身份、32 步预测、已下发步数及反馈。底部四个关键时刻可一键定位；“查看此刻的动作细节”进入同一条记录、同一时间的详细回放。现有两条记录是取布放筐任务，**不是医院运输录像，也不是 VLM 文字推理**。相机为原始 224×224 采样帧。
 
-主屏提供“真机记录 / 实时观察”来源选择。默认使用真实日志回放；实时入口目前未接机器，显示未连接。只读实时快照合同、接入命令及待完成事项见 [LIVE.md](LIVE.md)。三种画面明确区分真实记录、四机模拟和实时源。
+主屏提供“真机记录 / 实时观察”来源选择。默认地址使用真实日志回放；通过 `start_live.sh` 启动可自动接收相机快照并进入实时观察。只读快照合同及接入说明见 [LIVE.md](LIVE.md)。三种画面明确区分真实记录、四机模拟和实时源。
 
 原两机模拟内核保持不变，四机流程由新增的 `FourRobotEngine` 扩展，复用原有派发、资源预约、回执校验和故障恢复机制。内部 ID `R1 / R2` 显示为 Pro 01 / Pro 02，新增 `R3 / R4` 显示为 Lite 01 / Lite 02。四台都来自后端状态并有真实的模拟任务；所有位置、运输与交接能力均为本地模拟。
 
 ## 启动（Windows / Linux / Mac，Python 3.9+，无第三方依赖）
 
-推荐：Windows 双击 `run.bat`；Linux 将 `run.sh` 设为可执行后双击，选择“在终端运行”（也可 `./run.sh`）。启动器优先打开 Chrome / Edge 的独立全屏窗口；没有这两个浏览器时打开默认浏览器，按 F11 全屏。保持启动终端开启，Ctrl+C 停止本次启动的服务；浏览器可用 Alt+F4 关闭。Mac 可在终端运行 `./run.sh`，用 ⌘W 关闭展示窗口。
+Linux 相机实时观察可直接运行项目根目录的 `./start_live.sh`，自动接收 `172.18.21.239:8772/snapshot` 并打开实时模式。换机器人用 `--robot-ip`；完整说明见项目根目录 `LIVE_START.txt`。
 
-启动器只复用同一目录、数据库和实时配置的四机服务，不会关闭其他程序或误用另一份交付包。旧版服务未提供实例身份时也会提示换端口。端口冲突时可以运行 `run.bat --port 8772` 或 `sh run.sh --port 8772`。相对 `--db` / `--telemetry-file` 路径以 `exhibit/` 为基准，建议使用绝对路径。
+项目只保留根目录 `start_live.sh` 一个启动文件。执行 `./start_live.sh` 自动接收真实相机并打开实时观察；机器人端必须已有新鲜画面。保持终端开启，Ctrl+C 停止本次启动的进程。端口冲突可用 `./start_live.sh --port 8773`。程序不会结束不属于本次启动的服务。
+
+以下是开发或高级手动调用，绕过相机接收器（从 exhibit 目录运行）：
 
 ```bash
 python3 server.py --port 8771
@@ -70,7 +72,7 @@ cp ../replay_panel/replay_<run>.html static/replays/
 | `static/index.html` / `app.js` / `style.css` | 展示台前端（新写） |
 | `static/showcase.js` / `showcase.css` | 展会主屏、真实记录播放与实时入口；无外部资源 |
 | `static/replays/` | 回放 HTML |
-| `run.bat` / `run.sh` / `launcher.py` | 本地服务与全屏浏览器启动器，无第三方依赖 |
+| 根目录 `start_live.sh` / `live_launcher.py` | 唯一启动入口及内部接收监督模块；`launcher.py` 为服务与浏览器内部辅助模块 |
 | `instance_identity.py` | 根据目录、数据库和实时配置生成本地实例散列，防止复用另一份展示服务 |
 | `preview_showcase_1920x1080.png` / `preview_fleet_1920x1080.png` / `preview_replay_1920x1080.png` | 无头 Chrome 截的三个画面预览 |
 | `qa/browser_report.json` / `qa/browser_check.mjs` | 22 项浏览器检查记录及开发用复查脚本；复查脚本需 Node 20+，展台运行不需要 Node |

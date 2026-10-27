@@ -236,6 +236,7 @@ window.Showcase = (() => {
       if (!result.replays.length) throw new Error('empty');
       if (mode === 'recording') await loadRecording(result.replays[0]);
     } catch (_) {
+      if (mode !== 'recording') return;
       clearEvidence('未找到可用运行记录'); text('show-stage', '添加真实运行记录后可展示'); announce('运行记录不可用');
     }
   }
@@ -243,6 +244,9 @@ window.Showcase = (() => {
     if (mode === 'live' && live?.connected && live.age_s + (performance.now() - liveReceivedAt) / 1000 > 5) renderLive({...live, connected: false, status: 'stale'});
     pollLive();
   }, 1000);
+  if (new URLSearchParams(location.search).get('source') === 'live') {
+    el('show-mode').value = 'live'; el('show-mode').onchange();
+  }
   requestAnimationFrame(animate); init();
   return {activate, seek, get status() { return status; }, getState: () => ({active, mode, file, ready, time, playing, status, liveConnected: !!live?.connected})};
 })();

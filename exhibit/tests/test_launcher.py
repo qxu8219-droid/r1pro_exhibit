@@ -41,8 +41,8 @@ class OtherApp(BaseHTTPRequestHandler):
 
 
 class LauncherTests(unittest.TestCase):
-    @unittest.skipIf(os.name == "nt", "POSIX shell launcher")
-    def test_shell_launcher_from_path_with_spaces_and_termination_cleanup(self):
+    @unittest.skipIf(os.name == "nt", "POSIX symlink launcher test")
+    def test_internal_launcher_from_path_with_spaces_and_termination_cleanup(self):
         with tempfile.TemporaryDirectory(prefix="R1 shell test ") as directory:
             folder = Path(directory)
             linked = folder / "exhibition with spaces"
@@ -50,7 +50,7 @@ class LauncherTests(unittest.TestCase):
             with socket.socket() as listener:
                 listener.bind(("127.0.0.1", 0))
                 port = listener.getsockname()[1]
-            command = [str(linked / "run.sh"), "--no-browser", "--port", str(port),
+            command = [sys.executable, str(linked / "launcher.py"), "--no-browser", "--port", str(port),
                        "--db", str(folder / "shell.sqlite3")]
             process = subprocess.Popen(command, cwd=directory, stdout=subprocess.DEVNULL,
                                        stderr=subprocess.DEVNULL)

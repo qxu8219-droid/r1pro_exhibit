@@ -38,7 +38,7 @@ def main():
         return 1
     print("PASS: %d original files intact; standard-library runtime ready." % count)
     print("No service or robot connection was started. New local simulation data is ignored.")
-    print("Next: open START_HERE.html, then run.bat (Windows) or sh run.sh (Linux/Mac).")
+    print("Next: run ./start_live.sh for live cameras; see LIVE_START.txt.")
     return 0
 
 
