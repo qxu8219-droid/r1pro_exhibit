@@ -56,6 +56,19 @@
 - 真机回放、模型推理回放（2界面）、原记录及其播放/跳转功能保持不变。
 - 独立目录安装、停止和旁路参数见 robot_side/README.md；只读数据接口见 exhibit/LIVE.md。
 
+连续执行的使用流程
+1. 保持本机实时观察页面和启动终端运行。
+2. 在机器人终端按原方式启动一次（展示台不执行这条动作命令）：
+   cd /home/nvidia/deformable-objects/robot_home/flexible_coordinator
+   export B041_POLICY_URL=ws://127.0.0.1:18128
+   export VLA_PYTHON=/home/nvidia/vla_deploy/venv/bin/python3
+   export ROBOT_CONFIG="$PWD/robot239_config.json"
+   bash start.sh --enable-motion
+3. 原脚本内部持续执行检测、VLA、停止确认、回位及下一轮检查；展示自动跟随每轮，无需重开页面或选择日志。
+4. 原脚本暂停、报错或人工停止后，展示保留已有证据，不会自动重新启动机器人。以后按原命令再次启动，新的会话也会自动接入。
+5. 新会话尚无数据时显示“等待本轮记录”，不借用旧动作。上一轮的日志尾部、SUMMARY与迟到输入会有界补采并保留；缺失项明确记录。
+轮间等待由原控制程序负责，本功能不增加或改变固定间隔，不在原脚本外再套自动重启循环。
+
 故障提示
 Connection refused：检查现有相机接口或独立VLA旁路是否在运行；启动器不会改动或重启原相机。
 Permission denied：检查 SSH 用户名、密码或密钥。

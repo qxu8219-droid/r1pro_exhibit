@@ -23,5 +23,6 @@
   "robot_observer_directory": "/home/nvidia/r1_exhibit_observer",
   "robot_original_files_modified": false,
   "vla_source": "Incremental existing events.jsonl + exact request NPZ + SUMMARY; no controller hooks; unavailable request start remains unknown",
-  "live_vla_validation": "129 exhibit tests, 25 observer tests, isolated Chrome regressions, read-only actual runtime log/NPZ integration; no test-triggered motion"
+  "live_vla_validation": "135 exhibit tests + 33 observer tests; isolated Chrome and Collector HTTP→Receiver→Store multi-session regression; physical loop validation pending robot power-on",
+  "continuous_live_follow": "Existing controller loop unchanged; observer follows sessions and operations, drains late evidence, and clears old actions for an empty new session"
 }

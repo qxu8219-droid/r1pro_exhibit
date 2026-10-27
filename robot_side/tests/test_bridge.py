@@ -261,3 +261,190 @@ class LegacyClockTests(unittest.TestCase):
             self.assertEqual(rows[-1]['observed_at']-rows[0]['observed_at'],1)
             file.write_text('{"event":"recovery_feedback","stamps":[1,1800000001],"monotonic":1}\n');c.poll()
             self.assertEqual(c.state['anchors']['client_a'],1800000000)
+
+
+class ContinuousSessionTests(unittest.TestCase):
+    def session(self, root, name, stamp, rows=()):
+        import os
+        session = root/name
+        session.mkdir(parents=True, exist_ok=True)
+        path = session/'events.jsonl'
+        path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        os.utime(path, (stamp, stamp))
+        return session
+
+    def rows(self, collector):
+        return [json.loads(line) for line in collector.path.read_text().splitlines()]
+
+    def archive(self, path):
+        import numpy as np
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(path, state=np.arange(23), head_rgb=np.zeros((2,2,3), dtype=np.uint8),
+                 left_wrist_rgb=np.zeros((2,2,3), dtype=np.uint8), right_wrist_rgb=np.zeros((2,2,3), dtype=np.uint8))
+
+    def test_three_sessions_keep_active_identity_across_empty_log_late_writes_and_restart(self):
+        import os
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);root=p/'runtime'
+            ignored=self.session(root, 'client_history', 1, [{'event':'target'}])
+            ignored_empty=root/'client_empty_history';ignored_empty.mkdir()
+            first=self.session(root, 'client_first', 2, [{'event':'recovery_feedback','operation':'0001_run'}])
+            c=bridge.Collector(p/'observer', legacy_root=root);c.poll()
+            self.assertEqual(c.health().get('active_session_id'), 'client_first')
+            second=self.session(root, 'client_second', 3)
+            c.poll()
+            self.assertEqual(c.health().get('active_session_id'), 'client_second')
+            (ignored_empty/'events.jsonl').write_text('{"event":"target"}\n')
+            os.utime(ignored/'events.jsonl', (50,50))
+            with (first/'events.jsonl').open('a') as f:f.write('{"event":"target","step":1}\n')
+            c.poll()
+            self.assertEqual(c.health().get('active_session_id'), 'client_second')
+            third=self.session(root, 'client_third', 4, [{'event':'recovery_feedback','operation':'0001_run'}])
+            c.poll()
+            os.utime(second/'events.jsonl', (100,100))
+            c=bridge.Collector(p/'observer', legacy_root=root)
+            for _ in range(4):c.poll()
+            self.assertEqual(c.health().get('active_session_id'), 'client_third')
+            self.assertEqual({row['session_id'] for row in self.rows(c)}, {'client_first','client_third'})
+            self.assertFalse(any(row['kind'] in ('request_started','operation_started') for row in self.rows(c)))
+
+    def test_retired_session_tail_late_summary_and_unannounced_npz_are_drained_read_only(self):
+        import os
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);root=p/'runtime'
+            old=self.session(root,'client_old',1,[{'event':'recovery_feedback','operation':'0001_run'}])
+            c=bridge.Collector(p/'observer', legacy_root=root);c.poll()
+            with (old/'events.jsonl').open('a') as f:
+                for i in range(650):f.write(json.dumps({'event':'target','step':i})+'\n')
+            os.utime(old/'events.jsonl',(2,2))
+            current=self.session(root,'client_current',3,[{'event':'recovery_feedback','operation':'0001_run'}])
+            self.archive(old/'0001_run/request_0007_obs.npz')
+            summary=old/'0001_run/SUMMARY.json';summary.write_text(json.dumps({'mode':'run','result':{'finished':True}}))
+            before={str(f):(f.read_bytes(),f.stat().st_mtime_ns,f.stat().st_ino) for f in root.rglob('*') if f.is_file()}
+            for _ in range(12):
+                count=len(self.rows(c))
+                with patch.object(c,'_source',wraps=c._source) as reads:c.poll()
+                self.assertLessEqual(reads.call_count,2)
+                self.assertLessEqual(len(self.rows(c))-count,510)
+            rows=self.rows(c)
+            self.assertEqual(len([r for r in rows if r['session_id']=='client_old' and r['kind']=='target']),650)
+            self.assertTrue(any(r['session_id']=='client_old' and r['kind']=='operation_finished' for r in rows))
+            self.assertTrue(any(r['session_id']=='client_old' and r['kind']=='observation' and r['payload']['attempt']==7 for r in rows))
+            self.assertEqual(c.health().get('active_session_id'),'client_current')
+            after={str(f):(f.read_bytes(),f.stat().st_mtime_ns,f.stat().st_ino) for f in root.rglob('*') if f.is_file()}
+            self.assertEqual(before,after)
+
+    def test_same_session_late_operation_archive_and_rewritten_summary_keep_generation(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);root=p/'runtime'
+            session=self.session(root,'client_a',1,[{'event':'recovery_feedback','operation':'0001_run'}])
+            c=bridge.Collector(p/'observer', legacy_root=root);c.poll()
+            with (session/'events.jsonl').open('a') as f:
+                f.write('{"event":"recovery_feedback","operation":"0002_home"}\n')
+                f.write('{"event":"recovery_feedback","operation":"0003_run"}\n')
+            self.archive(session/'0001_run/request_0000_obs.npz')
+            self.archive(session/'0003_run/request_0000_obs.npz')
+            summary=session/'0003_run/SUMMARY.json';summary.write_text(json.dumps({'mode':'run','result':{'finished':True}}))
+            for _ in range(8):c.poll()
+            rows=self.rows(c)
+            self.assertEqual({r['operation_id'] for r in rows if r['kind']=='observation'},{'0001_run','0003_run'})
+            summary.write_text(json.dumps({'mode':'run','result':{'finished':True,'reason':'checked'}}))
+            for _ in range(4):c.poll()
+            self.assertTrue(any(r['kind']=='operation_finished' and r['payload']['result'].get('reason')=='checked' for r in self.rows(c)))
+            (session/'events.jsonl').write_text('{"event":"recovery_feedback","operation":"0003_run","feedback23":[1]}\n')
+            summary.write_text(json.dumps({'mode':'run','result':{'finished':False,'stopped':True}}))
+            for _ in range(6):c.poll()
+            finished=[r for r in self.rows(c) if r['kind']=='operation_finished']
+            self.assertTrue(any(r['run_id']=='legacy:client_a:1:0003_run' and r['payload']['result'].get('stopped') for r in finished))
+            self.assertEqual(len({r['event_id'] for r in finished}),3)
+
+    def test_quiet_retired_sessions_stop_source_scans_and_restart_does_not_reactivate_history(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);root=p/'runtime'
+            self.session(root,'client_first',1,[{'event':'recovery_feedback','operation':'0001_run'}])
+            with patch.object(bridge.time,'time',return_value=1000):
+                c=bridge.Collector(p/'observer', legacy_root=root);c.poll()
+                self.session(root,'client_second',2,[{'event':'recovery_feedback','operation':'0001_run'}]);c.poll()
+                self.session(root,'client_third',3,[{'event':'recovery_feedback','operation':'0001_run'}]);c.poll()
+                for _ in range(8):c.poll()
+            with patch.object(bridge.time,'time',return_value=1200):
+                for _ in range(8):c.poll()
+                c=bridge.Collector(p/'observer', legacy_root=root)
+                with patch.object(c,'_source',wraps=c._source) as reads:
+                    for _ in range(4):c.poll()
+                self.assertEqual({call.args[0].parent.name for call in reads.call_args_list},{'client_third'})
+                self.assertEqual(c.health().get('active_session_id'),'client_third')
+
+    def test_retirement_records_missing_summary_and_incomplete_input_without_claiming_finish(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);root=p/'runtime'
+            old=self.session(root,'client_old',1,[{'event':'recovery_feedback','operation':'0001_run'}])
+            (old/'0001_run').mkdir();(old/'0001_run/request_0000_obs.npz').write_bytes(b'partial')
+            with patch.object(bridge.time,'time',return_value=1000):
+                c=bridge.Collector(p/'observer', legacy_root=root);c.poll()
+                self.session(root,'client_new',2);c.poll()
+            with patch.object(bridge.time,'time',return_value=1035):c.poll()
+            with patch.object(bridge.time,'time',return_value=1200):
+                for _ in range(4):c.poll()
+            rows=[r for r in self.rows(c) if r['session_id']=='client_old']
+            gaps=[r for r in rows if r['kind']=='capture_gap']
+            self.assertTrue(any('summary' in r['payload']['reason'] for r in gaps))
+            self.assertTrue(any('archive_input_unreadable' in r['payload']['reason'] for r in gaps))
+            self.assertFalse(any(r['kind']=='operation_finished' for r in rows))
+            self.assertEqual(c.health().get('active_session_id'),'client_new')
+
+    def test_generation_rewrite_during_directory_scan_does_not_keep_retired_source_open(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);root=p/'runtime'
+            old=self.session(root,'client_old',1,[{'event':'recovery_feedback','operation':'0001_run'}])
+            for i in range(70):(old/('unused_%03d'%i)).mkdir()
+            with patch.object(bridge.time,'time',return_value=1000):
+                c=bridge.Collector(p/'observer',legacy_root=root);c.poll()
+                (old/'events.jsonl').write_text('{"event":"recovery_feedback","operation":"0002_run"}\n')
+                c.poll();self.session(root,'client_new',2)
+                for _ in range(80):c.poll()
+            with patch.object(bridge.time,'time',return_value=1200):
+                for _ in range(8):c.poll()
+                with patch.object(c,'_source',wraps=c._source) as reads:
+                    for _ in range(3):c.poll()
+                self.assertEqual({call.args[0].parent.name for call in reads.call_args_list},{'client_new'})
+
+    def test_timed_out_npz_completed_in_place_is_retried_within_retired_window_after_restart(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);root=p/'runtime'
+            old=self.session(root,'client_old',1,[{'event':'recovery_feedback','operation':'0001_run'}])
+            archive=old/'0001_run';archive.mkdir();file=archive/'request_0000_obs.npz';file.write_bytes(b'partial')
+            with patch.object(bridge.time,'time',return_value=1000):
+                c=bridge.Collector(p/'observer',legacy_root=root);c.poll()
+                self.session(root,'client_new',2);c.poll()
+            with patch.object(bridge.time,'time',return_value=1035):c.poll()
+            directory_mtime=archive.stat().st_mtime_ns
+            self.archive(file)
+            self.assertEqual(archive.stat().st_mtime_ns,directory_mtime)
+            with patch.object(bridge.time,'time',return_value=1040):
+                c=bridge.Collector(p/'observer',legacy_root=root)
+                for _ in range(4):c.poll()
+            rows=[r for r in self.rows(c) if r['session_id']=='client_old']
+            self.assertEqual(len([r for r in rows if r['kind']=='capture_gap']),1)
+            self.assertEqual(len([r for r in rows if r['kind']=='observation']),1)
+            self.assertTrue(any(r['kind']=='artifact_ready' and r['payload']['status']=='ready' for r in rows))
+            self.assertEqual(c.health().get('active_session_id'),'client_new')
+
+    def test_native_only_collector_health_does_not_hide_its_live_run(self):
+        from exhibit.vla_evidence import VLAStore
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);source=p/'native.jsonl'
+            source.write_text(json.dumps(dict(schema_version=1,event_id='native:1',robot_id='robot239',session_id='native_session',
+                run_id='native_run',operation_id='native_op',kind='operation_started',observed_at=100,
+                payload={'mode':'run'}))+'\n')
+            c=bridge.Collector(p/'observer',telemetry_file=source);c.poll();batch=c.read(0,200)
+            store=VLAStore(':memory:')
+            try:
+                store.ingest(batch['events'],batch['source_id'],batch['next_cursor'],batch['health'])
+                self.assertEqual(store.live(now=101)['state']['run_id'],'native_run')
+            finally:store.close()

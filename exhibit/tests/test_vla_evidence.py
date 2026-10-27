@@ -19,6 +19,73 @@ def event(kind, seq, payload=None, request_id=None, run_id='run-1', operation_id
 
 
 class VLAEvidenceTests(unittest.TestCase):
+    def test_late_archive_from_previous_operation_cannot_replace_current_request(self):
+        old = event('raw_response', 1, {'attempt': 1, 'response': {'action23': [[1] * 23]}}, 'op-1:1')
+        current = event('raw_response', 2, {'attempt': 1, 'response': {'action23': [[2] * 23]}},
+                        'op-2:1', operation_id='op-2')
+        archive = event('observation', 3, {'attempt': 1, 'state23': [9] * 23,
+                        'observation_meta': {'status': 'archive_ready'}}, 'op-1:1')
+        self.store.ingest([old, current, archive], 'source', 10, {'observed_at': 103})
+        state = self.store.live(now=104)['state']
+        self.assertEqual(state['operation_id'], 'op-2')
+        self.assertEqual(state['request']['id'], 'op-2:1')
+        self.assertEqual(state['request']['action23'], [[2] * 23])
+        self.assertEqual(state['phase'], 'raw_response')
+
+    def test_old_metadata_schema_upgrades_without_changing_event_or_cursor(self):
+        old = event('raw_response', 1, {'attempt': 0, 'response': {'action23': [[1] * 23]}}, 'old:0')
+        self.store.ingest([old], 'source', 10, {'observed_at': 101})
+        self.store.close()
+        with sqlite3.connect(self.path) as db:
+            before = db.execute('SELECT body FROM vla_events').fetchone()[0]
+            db.executescript('''CREATE TABLE old_meta(event_id TEXT PRIMARY KEY,observed_at REAL NOT NULL,kind TEXT NOT NULL,run_id TEXT NOT NULL,request_id TEXT,light TEXT NOT NULL);
+                INSERT INTO old_meta SELECT event_id,observed_at,kind,run_id,request_id,light FROM vla_event_meta;
+                DROP TABLE vla_event_meta;
+                ALTER TABLE old_meta RENAME TO vla_event_meta;''')
+        self.store = VLAStore(self.path)
+        self.store.ingest([], 'source', 10, {'observed_at': 101, 'active_session_id': 's1', 'robot_id': 'r1'})
+        self.assertEqual(self.store.live(now=102)['state']['request']['action23'], [[1] * 23])
+        self.assertEqual(self.store.cursor('source'), 10)
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(db.execute('SELECT body FROM vla_events').fetchone()[0], before)
+        self.assertEqual(len(self.store.events('run-1')['events']), 1)
+
+    def test_empty_new_session_clears_current_evidence_but_keeps_history(self):
+        old = event('raw_response', 1, {'attempt': 0, 'response': {'action23': [[1] * 23]}}, 'old:0')
+        self.store.ingest([old], 'source', 10, {'observed_at': 101, 'robot_id': 'r1', 'active_session_id': 's1'})
+        self.store.ingest([], 'source', 10, {'observed_at': 101, 'robot_id': 'r1', 'active_session_id': 's2'})
+        result = self.store.live(now=102)
+        self.assertEqual(result['status'], 'waiting')
+        self.assertEqual(result['state']['session_id'], 's2')
+        self.assertEqual(result['state']['robot_id'], 'r1')
+        self.assertIsNone(result['state']['run_id'])
+        self.assertIsNone(result['state']['request']['action23'])
+        self.assertEqual(len(self.store.runs()), 1)
+
+    def test_retired_session_tail_cannot_steal_current_session(self):
+        current = event('raw_response', 2, {'attempt': 0, 'response': {'action23': [[2] * 23]}}, 'new:0', run_id='run-2')
+        current['session_id'] = 's2'
+        late = event('operation_finished', 3, {'mode': 'run', 'result': {'finished': True}})
+        self.store.ingest([current, late], 'source', 30,
+                         {'observed_at': 103, 'robot_id': 'r1', 'active_session_id': 's2'})
+        state = self.store.live(now=104)['state']
+        self.assertEqual(state['run_id'], 'run-2')
+        self.assertEqual(state['request']['action23'], [[2] * 23])
+        self.assertIsNone(state['verification']['run_finished'])
+        self.assertTrue(next(r for r in self.store.runs() if r['run_id'] == 'run-1')['verification']['run_finished'])
+
+    def test_late_archive_input_cannot_steal_next_operation_or_refresh_executor(self):
+        old = event('target', 1, {'target23': [1] * 23})
+        new = event('target', 2, {'target23': [2] * 23}, run_id='run-2', operation_id='op-2')
+        archived = event('observation', 30, {'attempt': 0, 'state23': [9] * 23,
+                            'observation_meta': {'status': 'archive_ready'}}, 'op-1:0')
+        self.store.ingest([old, new, archived], 'source', 100,
+                         {'observed_at': 130, 'robot_id': 'r1', 'active_session_id': 's1'})
+        result = self.store.live(now=131)
+        self.assertEqual(result['state']['run_id'], 'run-2')
+        self.assertEqual(result['status'], 'stale')
+        self.assertEqual(result['state']['execution']['target23'], [2] * 23)
+
     def test_precheck_failure_is_visible_without_inventing_a_vla_request(self):
         self.store.ingest([event('operation_finished', 1, {'mode': 'precheck',
             'result_kind': 'CLIENT_ERROR', 'result': {'reason': 'ROS graph not ready', 'stopped': False}})],

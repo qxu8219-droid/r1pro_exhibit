@@ -150,13 +150,21 @@ def _state():
         stats=dict(events=0, requests=0, responses=0, failed_requests=0, dropped=0), last_event_at=None)
 
 
+def _activity(event):
+    # A late NPZ becoming readable proves an archive is ready, not that its
+    # old operation is now executing. It must not select or refresh a run.
+    return event['kind'] in _ACTIVITY and not (
+        event['kind'] == 'observation'
+        and (event['payload'].get('observation_meta') or {}).get('status') == 'archive_ready')
+
+
 def _project(events):
     state = _state()
     request_operation = None
     terminal_operations = {}
     for e in events:
         p, kind, at = e['payload'], e['kind'], e['observed_at']
-        if kind in _ACTIVITY or kind == 'status':
+        if _activity(e) or kind == 'status':
             for key in ('robot_id', 'session_id', 'run_id', 'operation_id'):
                 state[key] = e[key]
             state['last_event_at'] = at
@@ -166,6 +174,9 @@ def _project(events):
             state.update(phase=p.get('mode') or 'started', task=p.get('task', state['task']),
                          model_id=p.get('model_id', state['model_id']), legacy=bool(p.get('legacy', False)))
         elif kind in ('observation', 'request_started'):
+            if (kind == 'observation' and not _activity(e)
+                    and state['operation_id'] is not None and e['operation_id'] != state['operation_id']):
+                continue
             rid = e.get('request_id')
             # An attempt is never inferred from the successful action chunk.
             if not rid:
@@ -300,7 +311,8 @@ class VLAStore:
             CREATE INDEX IF NOT EXISTS vla_run_seq ON vla_events(run_id,seq);
             CREATE TABLE IF NOT EXISTS vla_event_meta (
                 event_id TEXT PRIMARY KEY, observed_at REAL NOT NULL, kind TEXT NOT NULL,
-                run_id TEXT NOT NULL, request_id TEXT, light TEXT NOT NULL);
+                run_id TEXT NOT NULL, request_id TEXT, light TEXT NOT NULL,
+                session_id TEXT, activity INTEGER);
             CREATE INDEX IF NOT EXISTS vla_meta_time ON vla_event_meta(observed_at);
             CREATE TABLE IF NOT EXISTS vla_run_starts (
                 source_id TEXT NOT NULL, event_id TEXT NOT NULL, run_id TEXT NOT NULL, PRIMARY KEY(source_id,event_id));
@@ -309,17 +321,31 @@ class VLAStore:
             CREATE TABLE IF NOT EXISTS vla_sources (
                 source_id TEXT PRIMARY KEY, cursor INTEGER NOT NULL, health TEXT, received_at REAL NOT NULL);
         ''')
-        # Upgrade this isolated ledger format without changing stored event bodies.
-        for (body,) in self._db.execute('SELECT body FROM vla_events WHERE event_id NOT IN (SELECT event_id FROM vla_event_meta)').fetchall():
-            self._write_meta(json.loads(body))
-        self._db.commit()
+        # Serialize schema upgrades with the receiver/server's separate connection.
+        # Stored event bodies and offsets remain unchanged.
+        self._db.execute('BEGIN IMMEDIATE')
+        try:
+            columns = {r[1] for r in self._db.execute('PRAGMA table_info(vla_event_meta)')}
+            for name, kind in (('session_id', 'TEXT'), ('activity', 'INTEGER')):
+                if name not in columns:
+                    self._db.execute('ALTER TABLE vla_event_meta ADD COLUMN %s %s' % (name, kind))
+            for (body,) in self._db.execute('SELECT e.body FROM vla_events e LEFT JOIN vla_event_meta m ON e.event_id=m.event_id WHERE m.event_id IS NULL OR m.session_id IS NULL OR m.activity IS NULL').fetchall():
+                self._write_meta(json.loads(body))
+            self._db.execute('CREATE INDEX IF NOT EXISTS vla_meta_session_activity ON vla_event_meta(session_id,activity,observed_at)')
+            self._db.commit()
+        except BaseException:
+            self._db.rollback()
+            self._db.close()
+            raise
 
     def _write_meta(self, event):
         light = dict(event)
         if event['kind'] == 'artifact_ready':
             light['payload'] = {k: v for k, v in event['payload'].items() if k != 'images'}
-        self._db.execute('INSERT OR IGNORE INTO vla_event_meta(event_id,observed_at,kind,run_id,request_id,light) VALUES(?,?,?,?,?,?)',
-                         (event['event_id'], event['observed_at'], event['kind'], event['run_id'], event.get('request_id'), json.dumps(light, ensure_ascii=False)))
+        self._db.execute('INSERT OR IGNORE INTO vla_event_meta(event_id,observed_at,kind,run_id,request_id,light,session_id,activity) VALUES(?,?,?,?,?,?,?,?)',
+                         (event['event_id'], event['observed_at'], event['kind'], event['run_id'], event.get('request_id'), json.dumps(light, ensure_ascii=False), event['session_id'], int(_activity(event))))
+        self._db.execute('UPDATE vla_event_meta SET session_id=?,activity=? WHERE event_id=? AND (session_id IS NULL OR activity IS NULL)',
+                         (event['session_id'], int(_activity(event)), event['event_id']))
 
     def ingest(self, events, source_id, cursor, health=None):
         if not isinstance(source_id, str) or not _ID.fullmatch(source_id):
@@ -337,6 +363,12 @@ class VLAStore:
                 if key in health:
                     h[key] = None if key == 'observed_at' and health[key] is None else _number(health[key])
             h['legacy'] = bool(health.get('legacy', False))
+            for key in ('active_session_id', 'robot_id'):
+                if key in health:
+                    value = health[key]
+                    if value is not None and (not isinstance(value, str) or not _ID.fullmatch(value)):
+                        raise ValueError('Invalid VLA health identity')
+                    h[key] = value
         with self._lock, self._db:
             for e in cleaned:
                 self._write_meta(e)
@@ -393,22 +425,26 @@ class VLAStore:
         now = time.time() if now is None else _number(now)
         with self._lock:
             source = self._db.execute('SELECT health,received_at,source_id FROM vla_sources ORDER BY received_at DESC,rowid DESC LIMIT 1').fetchone()
+            health = json.loads(source[0]) if source else {}
             active = None
-            if source:
-                marks = ','.join('?' for _ in _ACTIVITY)
-                row = self._db.execute('SELECT m.run_id FROM vla_event_meta m JOIN vla_event_sources s ON m.event_id=s.event_id WHERE s.source_id=? AND m.kind IN (' + marks + ') AND m.observed_at<=? ORDER BY m.observed_at DESC,m.event_id DESC LIMIT 1', (source[2], *sorted(_ACTIVITY), now + 1)).fetchone()
+            selected = health.get('active_session_id')
+            if source and ('active_session_id' not in health or selected is not None):
+                clause = ' AND m.session_id=?' if selected is not None else ''
+                params = (source[2], now + 1) + ((selected,) if selected is not None else ())
+                row = self._db.execute('SELECT m.run_id FROM vla_event_meta m JOIN vla_event_sources s ON m.event_id=s.event_id WHERE s.source_id=? AND m.activity=1 AND m.observed_at<=?' + clause + ' ORDER BY m.observed_at DESC,m.event_id DESC LIMIT 1', params).fetchone()
                 if row is None:
-                    row = self._db.execute("SELECT m.run_id FROM vla_event_meta m JOIN vla_event_sources s ON m.event_id=s.event_id WHERE s.source_id=? AND m.kind='status' AND m.observed_at<=? ORDER BY m.observed_at DESC,m.event_id DESC LIMIT 1", (source[2], now + 1)).fetchone()
+                    row = self._db.execute("SELECT m.run_id FROM vla_event_meta m JOIN vla_event_sources s ON m.event_id=s.event_id WHERE s.source_id=? AND m.kind='status' AND m.observed_at<=?" + clause + ' ORDER BY m.observed_at DESC,m.event_id DESC LIMIT 1', params).fetchone()
                 active = row[0] if row else None
             events = [e for e in self._all(source[2], active) if e['observed_at'] <= now + 1] if source and active else []
             state = _project(events)
+            if not events and 'active_session_id' in health:
+                state.update(session_id=selected, robot_id=health.get('robot_id'))
             rid = state['request']['id']
             if rid:
                 artifact = self._db.execute("SELECT e.body FROM vla_events e JOIN vla_event_meta m ON e.event_id=m.event_id JOIN vla_event_sources s ON e.event_id=s.event_id WHERE s.source_id=? AND m.run_id=? AND m.request_id=? AND m.kind='artifact_ready' ORDER BY m.observed_at DESC,m.event_id DESC LIMIT 1", (source[2], active, rid)).fetchone()
                 if artifact:
                     state['request']['images'] = json.loads(artifact[0])['payload'].get('images')
-        health = json.loads(source[0]) if source else {}
-        activity = [e['observed_at'] for e in events if e['kind'] in _ACTIVITY or e['kind'] == 'status']
+        activity = [e['observed_at'] for e in events if _activity(e) or e['kind'] == 'status']
         age = max(0, now - max(activity)) if activity else None
         if age is not None and health.get('observed_at') is not None:
             age = max(age, max(0, now - min(health['observed_at'], now)))

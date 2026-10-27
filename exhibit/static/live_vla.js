@@ -36,7 +36,8 @@ window.LiveVLA = (() => {
     const freshness = finite(envelope.freshness_s) && envelope.freshness_s > 0 ? envelope.freshness_s : 15;
     const stale = envelope.status === 'stale' || (finite(envelope.age_s) && envelope.age_s + (performance.now() - received) / 1000 > freshness);
     const connected = !!envelope.connected && !stale;
-    const badge = mismatch ? 'VLA 与相机机器人身份不匹配' : stale ? 'VLA 证据已过期' : connected ? (s?.legacy ? 'VLA 只读 · 旧日志' : 'VLA 证据已连接') : envelope.status === 'unconfigured' ? 'VLA 事件源未接入' : 'VLA 连接断开 · 等待事件';
+    const awaiting = envelope.status === 'waiting';
+    const badge = mismatch ? 'VLA 与相机机器人身份不匹配' : stale ? 'VLA 证据已过期' : awaiting ? '等待本轮 VLA 记录' : connected ? (s?.legacy ? 'VLA 只读 · 旧日志' : 'VLA 证据已连接') : envelope.status === 'unconfigured' ? 'VLA 事件源未接入' : 'VLA 连接断开 · 等待事件';
     put('live-vla-status', badge); el('live-vla-status').className = 'chip ' + (connected && !mismatch ? 'live' : 'warn');
     // Without VLA evidence, preserve the existing snapshot-only task presentation.
     if (!s && !lastIdentity) {
@@ -65,9 +66,9 @@ window.LiveVLA = (() => {
     const requestState = !r ? '尚无请求记录' : failed ? (r.status === 'cancelled' ? '请求已取消' : '请求失败') : returned ? '模型已返回' : r.status === 'observed' ? '输入已记录 · 等待模型结果' : '请求中 · 等待模型返回';
     const requestLabel = r ? `请求 ${r.id ?? '未知'} · 尝试 ${Number.isInteger(r.attempt) ? r.attempt : '未知'}` : '尚无请求记录';
     const phases = {waiting: '等待运行事件', run: '任务已开始', home: '回位过程', precheck: '准备检查', precheck_failed: '预检查未通过', precheck_finished: '预检查结果已记录', stop: '停止过程', observation: '输入已记录 · 等待模型结果', request_started: '请求中 · 等待模型返回', raw_response: '模型已返回 · 等待动作下发', target: '动作已下发 · 等待反馈核对', run_finished: '运行已结束 · 结果待独立核验', home_finished: '回位已结束 · 任务结果待核验', request_failed: '请求失败 · 等待重试', request_cancelled: '请求已取消', finished: '运行已结束 · 结果待独立核验', executing: '动作已下发 · 等待反馈核对', response: '模型已返回 · 等待动作下发', requesting: '请求中 · 等待模型返回', observing: '观察输入'};
-    put('show-task-name', s.task || '未提供当前任务'); put('show-model', s.model_id || '—');
-    put('show-status', stale ? '证据已过期' : connected ? 'VLA 实时证据' : 'VLA 已断开');
-    put('show-stage', stale ? '证据已过期 · 保留最后记录' : !connected ? 'VLA 已断开 · 保留最后记录' : phases[s.phase] || s.phase || requestState);
+    put('show-task-name', s.task || (awaiting ? '等待本轮执行数据' : '未提供当前任务')); put('show-model', s.model_id || '—');
+    put('show-status', awaiting ? '等待运行记录' : stale ? '证据已过期' : connected ? 'VLA 实时证据' : 'VLA 已断开');
+    put('show-stage', awaiting ? (s.session_id ? '新一轮会话已发现 · 等待执行记录' : '等待 VLA 运行记录') : stale ? '证据已过期 · 保留最后记录' : !connected ? 'VLA 已断开 · 保留最后记录' : phases[s.phase] || s.phase || requestState);
     put('show-decision-note', returned && r.cot_text ? '模型返回了动作与 CoT；详见下方实时证据。' : '只读展示模型实际返回；缺少 CoT 时不生成解释。');
     put('show-observation', `${requestLabel}${r ? ' · 采集 ' + stamp(r.capture_at) : ''}`);
     put('show-observation-value', vector(r?.state23) ? '23 维' : '—');

@@ -142,6 +142,15 @@ try {
   console.log('PASS retry and failed request cannot show earlier actions or CoT');
   projection.state.run_id='qa-run-2'; projection.state.request={id:null,status:null,attempt:null,chunk:null,capture_at:null,started_at:null,response_at:null,state23:null,action23:null,rtt_ms:null,cot_text:null,inference_timing_ms:null,server_queue_and_compute_ms:null,images:null}; projection.state.execution={}; projection.state.verification={status:'pending',evidence:[]}; projection.state.phase='observing';
   await updated('new run'); assert.match(await read('show-prediction'),/尚无请求记录/); assert.doesNotMatch(await read('show-prediction'),/请求中/); assert.match(await read('show-provenance'),/qa-run-2/); assert.equal(await read('show-feedback-value'),'—'); assert.doesNotMatch(await read('live-vla-target'),/4\.01/); assert.doesNotMatch(await read('live-vla-verification'),/张开检测/);
+  projection.connected=false; projection.status='waiting'; projection.age_s=null;
+  projection.state.session_id='qa-session-next'; projection.state.run_id=null; projection.state.phase='waiting';
+  await updated('new empty session');
+  assert.match(await read('show-stage'),/等待/);
+  assert.doesNotMatch(await read('show-stage'),/断开|保留最后记录|执行中/);
+  assert.match(await read('show-provenance'),/qa-session-next/);
+  assert.equal(await read('show-prediction-value'),'—');
+  assert.doesNotMatch(await read('live-vla-output'),/2\.01/);
+  console.log('PASS newly detected empty session waits without retaining previous actions');
   projection.connected=false; projection.status='stale'; projection.age_s=18;
   await updated('stale'); assert.match(await read('live-vla-status'),/过期/); assert.doesNotMatch(await read('show-stage'),/执行中/); assert.deepEqual(await cameraState(),cameras);
   projection.connected=true; projection.status='connected'; projection.age_s=0; projection.state.robot_id='different-robot'; projection.state.task='WRONG ROBOT TASK';
