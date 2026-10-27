@@ -1,4 +1,4 @@
-"""Local-only fleet simulator and operator console. Python 3.9+, no dependencies."""
+"""Local/LAN fleet simulator and operator console. Python 3.9+, no dependencies."""
 import argparse
 import json
 import threading
@@ -189,6 +189,10 @@ def make_handler(runtime, telemetry_file=None):
 
         def valid_host(self):
             allowed = {"127.0.0.1:" + str(self.server.server_port), "localhost:" + str(self.server.server_port)}
+            # A wildcard listener accepts LAN connections too. Trust only the
+            # actual local destination address, never an arbitrary Host or DNS name.
+            address, port = self.connection.getsockname()[:2]
+            allowed.add("%s:%d" % (address, port))
             return self.headers.get("Host", "") in allowed
 
         def do_GET(self):
