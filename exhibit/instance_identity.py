@@ -9,7 +9,7 @@ def _path_identity(path):
     return os.path.normcase(str(Path(path).resolve()))
 
 
-def instance_identity(root, db_path, fleet_size, telemetry_file=None):
+def instance_identity(root, db_path, fleet_size, telemetry_file=None, vla_db=None):
     """Hash the actual local root and configuration; never read the named files."""
     value = {
         "schema": 1,
@@ -18,5 +18,8 @@ def instance_identity(root, db_path, fleet_size, telemetry_file=None):
         "fleet_size": fleet_size,
         "telemetry": None if telemetry_file is None else _path_identity(telemetry_file),
     }
+    # Keep camera-only and recording instance digests backward compatible.
+    if vla_db is not None:
+        value["vla_db"] = _path_identity(vla_db)
     encoded = json.dumps(value, sort_keys=True, ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()

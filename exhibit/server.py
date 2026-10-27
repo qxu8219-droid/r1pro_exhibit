@@ -11,6 +11,7 @@ from core import Engine
 from planner import Planner
 from evidence import EvidenceError, read_recording, read_telemetry
 from instance_identity import instance_identity
+from vla_evidence import VLAStore, unconfigured_state
 
 
 class Runtime:
@@ -161,9 +162,10 @@ class Runtime:
             self.engine.close()
 
 
-def make_handler(runtime, telemetry_file=None):
+def make_handler(runtime, telemetry_file=None, vla_store=None):
     identity = instance_identity(Path(__file__).resolve().parent, runtime.db_path,
-                                 runtime.fleet_size, telemetry_file)
+                                 runtime.fleet_size, telemetry_file,
+                                 vla_db=vla_store.path if vla_store is not None else None)
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "R1FleetExhibit/0.1"
@@ -202,6 +204,22 @@ def make_handler(runtime, telemetry_file=None):
             if path == "/api/health":
                 return self.json_response({"ok": True, "simulation": True,
                                            "fleet_size": runtime.fleet_size, "instance_identity": identity})
+            if path == "/api/vla/state":
+                return self.json_response(vla_store.live() if vla_store is not None else unconfigured_state())
+            if path == "/api/vla/runs":
+                return self.json_response({"runs": vla_store.runs() if vla_store is not None else []})
+            if path == "/api/vla/events":
+                try:
+                    query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                    if set(query) - {"run_id", "after", "limit"} or len(query.get("run_id", [])) != 1 or any(len(v) != 1 for v in query.values()):
+                        raise ValueError("Invalid VLA query")
+                    run_id = query["run_id"][0]
+                    after, limit = int(query.get("after", ["0"])[0]), int(query.get("limit", ["200"])[0])
+                    if not run_id or len(run_id) > 256 or after < 0 or not 1 <= limit <= 1000:
+                        raise ValueError("Invalid VLA query")
+                    return self.json_response(vla_store.events(run_id, after, limit) if vla_store is not None else {"events": [], "next_cursor": after})
+                except (ValueError, TypeError):
+                    return self.json_response({"error": "INVALID_VLA_QUERY"}, 400)
             if path == "/api/state":
                 return self.json_response(runtime.state())
             if path == "/api/candidates":
@@ -222,7 +240,8 @@ def make_handler(runtime, telemetry_file=None):
                 files = sorted(p.name for p in (static / "replays").glob("*.html")) if (static / "replays").is_dir() else []
                 return self.json_response({"replays": files})
             assets = {"/": "index.html", "/app.js": "app.js", "/style.css": "style.css",
-                      "/showcase.js": "showcase.js", "/showcase.css": "showcase.css"}
+                      "/showcase.js": "showcase.js", "/showcase.css": "showcase.css",
+                      "/live_vla.js": "live_vla.js"}
             if path in assets:
                 asset = static / assets[path]
             elif path.startswith("/replays/") and path.endswith(".html") and "/" not in path[len("/replays/"):]:
@@ -285,13 +304,15 @@ def main():
     parser.add_argument("--db", default=None)
     parser.add_argument("--interval", type=float, default=0.65, help="Wall-clock seconds per simulation tick")
     parser.add_argument("--telemetry-file", default=None, help="Read-only local JSON telemetry snapshot; never connects to a robot")
+    parser.add_argument("--vla-db", default=None, help="Read-only VLA evidence SQLite database")
     args = parser.parse_args()
     if not 0.05 <= args.interval <= 10:
         parser.error("interval must be between 0.05 and 10 seconds")
     db = Path(args.db) if args.db else Path(__file__).parent / "data" / ("fleet-four.sqlite3" if args.fleet_size == 4 else "fleet.sqlite3")
     db.parent.mkdir(parents=True, exist_ok=True)
     runtime = Runtime(db, args.interval, fleet_size=args.fleet_size)
-    server = ThreadingHTTPServer(("0.0.0.0", args.port), make_handler(runtime, telemetry_file=args.telemetry_file))
+    vla_store = VLAStore(args.vla_db) if args.vla_db else None
+    server = ThreadingHTTPServer(("0.0.0.0", args.port), make_handler(runtime, telemetry_file=args.telemetry_file, vla_store=vla_store))
     print("R1 车队展示台: http://127.0.0.1:%d" % server.server_port, flush=True)
     print("Robot backend: simulator | Planner: explicit baseline (model optional)", flush=True)
     try:
@@ -301,6 +322,8 @@ def main():
     finally:
         server.server_close()
         runtime.close()
+        if vla_store is not None:
+            vla_store.close()
 
 
 if __name__ == "__main__":

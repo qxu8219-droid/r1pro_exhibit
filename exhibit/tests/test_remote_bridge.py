@@ -54,7 +54,7 @@ sys.exit(int(os.environ.get('SSH_TEST_STATUS', '0')))
     def args(self, robot_port, *extra):
         return ['--robot-ip', '127.0.0.1', '--robot-port', str(robot_port),
                 '--port', str(self.free_port()), '--snapshot-file', str(self.root/'snapshot.json'),
-                '--db', str(self.root/'fleet.sqlite3'), '--no-browser', '--wait-seconds', '0', *extra]
+                '--db', str(self.root/'fleet.sqlite3'), '--no-browser', '--no-vla', '--wait-seconds', '0', *extra]
 
     def camera(self, body=None, status=200, port=0):
         class Camera(BaseHTTPRequestHandler):
@@ -161,7 +161,7 @@ sys.exit(int(os.environ.get('SSH_TEST_STATUS', '0')))
         self.assertFalse(self.ssh_log.exists())
         self.assertFalse((self.root/'snapshot.json').exists())
 
-    def test_failed_remote_start_attempted_only_once(self):
+    def test_missing_camera_never_runs_original_robot_script(self):
         self.require_helper('start_remote_bridge')
         self.write_executable('ssh', """import os, sys
 with open(os.environ['SSH_TEST_LOG'], 'a') as stream:
@@ -172,18 +172,18 @@ sys.exit(0)
         args[args.index('--wait-seconds') + 1] = '1.1'
         with patch.dict(os.environ, self.env, clear=True):
             self.assertEqual(live.main(args), 1)
-        self.assertEqual(self.ssh_log.read_text().splitlines(), ['attempt'])
+        self.assertFalse(self.ssh_log.exists())
         self.assertFalse((self.root/'snapshot.json').exists())
 
-    def test_cancelled_remote_start_exits_cleanly_without_snapshot(self):
+    def test_cancelled_camera_read_exits_cleanly_without_snapshot(self):
         self.require_helper('start_remote_bridge')
-        with patch.object(live, 'start_remote_bridge', side_effect=KeyboardInterrupt):
+        with patch.object(live, 'fetch_snapshot', side_effect=KeyboardInterrupt):
             self.assertEqual(live.main(self.args(self.free_port())), 0)
         self.assertFalse((self.root/'snapshot.json').exists())
 
-    def test_remote_start_produces_real_snapshot_and_live_service(self):
+    def test_existing_camera_is_read_without_running_original_script(self):
         self.require_helper('start_remote_bridge')
-        robot_port = self.free_port()
+        robot_port = self.camera()
         args = self.args(robot_port, '--robot-user', 'qa-user', '--ssh-port', '2207',
                          '--bridge-script', '/robot/camera/start.sh')
         args[args.index('--wait-seconds') + 1] = '2'
@@ -200,7 +200,7 @@ sys.exit(0)
             raise KeyboardInterrupt
         with patch.object(live, 'start_remote_bridge', side_effect=start), patch.object(live, 'open_browser', side_effect=browser):
             self.assertEqual(live.main(args), 0)
-        self.assertEqual(calls, [('127.0.0.1', 'qa-user', 2207, '/robot/camera/start.sh')])
+        self.assertEqual(calls, [])
         self.assertEqual(json.loads((self.root/'snapshot.json').read_bytes())['run_id'], 'remote-started')
         self.assertTrue(observed[0]['connected'])
         self.assertEqual(observed[0]['state']['run_id'], 'remote-started')

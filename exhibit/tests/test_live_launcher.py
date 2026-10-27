@@ -132,7 +132,7 @@ class LiveLaunchTests(unittest.TestCase):
         return ['sh',str(launcher.ROOT.parent/'start_live.sh'),
                 '--robot-ip','127.0.0.1','--robot-port',str(self.camera.server_port),
                 '--port',str(port),'--snapshot-file',str(self.snapshot),
-                '--db',str(self.root/'fleet.sqlite3'),'--no-browser','--wait-seconds','1']
+                '--db',str(self.root/'fleet.sqlite3'),'--no-browser','--no-ssh','--wait-seconds','1']
 
     def start(self, port):
         log = (self.root/'launcher.log').open('ab')
@@ -197,14 +197,16 @@ class LiveLaunchTests(unittest.TestCase):
 
     def test_exiting_receiver_preserves_reused_server(self):
         port=self.free_port()
-        server=launcher.ensure_server(port,self.root/'fleet.sqlite3',telemetry_file=self.snapshot)
+        server=launcher.ensure_server(port,self.root/'fleet.sqlite3',telemetry_file=self.snapshot,
+                                     vla_db=self.root/'vla.sqlite3')
         self.addCleanup(launcher.stop_owned_server,server)
         process=self.start(port)
         self.wait_live(port,process)
         self.stop(process)
         self.assertEqual(process.returncode,0)
         self.assertIsNone(server.poll())
-        self.assertEqual(launcher.probe(port,self.root/'fleet.sqlite3',self.snapshot),'exhibit')
+        self.assertEqual(launcher.probe(port,self.root/'fleet.sqlite3',self.snapshot,
+                                       vla_db=self.root/'vla.sqlite3'),'exhibit')
 
     def test_writer_lock_stays_held_until_owned_server_is_stopped(self):
         # Exercise real service startup/shutdown. The browser boundary injects

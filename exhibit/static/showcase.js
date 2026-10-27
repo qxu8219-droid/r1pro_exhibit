@@ -164,6 +164,7 @@ window.Showcase = (() => {
       text('show-prediction-value', '—'); text('show-feedback', '未提供下发与反馈序列');
       text('show-rtt', finite(state.rtt_ms) ? Math.round(state.rtt_ms) + ' ms' : '—');
     }
+    window.LiveVLA.camera(result);
     playbackControls(); announce(label);
   }
   async function pollLive() {
@@ -213,10 +214,11 @@ window.Showcase = (() => {
   el('show-scrub').oninput = () => seek(Number(el('show-scrub').value), true);
   el('show-recording').onchange = () => loadRecording(el('show-recording').value);
   el('show-mode').onchange = () => {
+    window.LiveVLA.leave();
     mode = el('show-mode').value; ++generation; playing = false; data = null; ready = false; live = null;
     clearEvidence('正在切换数据来源'); makeChapters(); playbackControls();
     if (mode === 'recording') loadRecording(el('show-recording').value);
-    else { renderLive({status: 'unconfigured', connected: false}); pollLive(); }
+    else { window.LiveVLA.enter(); renderLive({status: 'unconfigured', connected: false}); pollLive(); }
   };
   el('show-detail').onclick = () => { if (data && mode === 'recording') window.dispatchEvent(new CustomEvent('showcase-detail', {detail: {file, time}})); };
   window.addEventListener('keydown', event => {

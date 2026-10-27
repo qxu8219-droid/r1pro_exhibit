@@ -18,5 +18,10 @@
   "handbook": "R1_Exhibition_Handbook.docx",
   "platform_validation": "Linux Chrome automated regression; physical vehicle integration pending",
   "live_camera_launcher": "start_live.sh",
-  "remote_camera_start": "SSH runs existing start_bridge.sh only when camera port is unavailable; interactive credentials, no source/config editing"
+  "remote_camera_start": "Disabled: existing camera interface is read-only; original robot scripts are never called",
+  "live_vla_evidence": true,
+  "robot_observer_directory": "/home/nvidia/r1_exhibit_observer",
+  "robot_original_files_modified": false,
+  "vla_source": "Incremental existing events.jsonl + exact request NPZ + SUMMARY; no controller hooks; unavailable request start remains unknown",
+  "live_vla_validation": "129 exhibit tests, 25 observer tests, isolated Chrome regressions, read-only actual runtime log/NPZ integration; no test-triggered motion"
 }

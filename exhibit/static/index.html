@@ -6,6 +6,7 @@
 <title>R1 车队运维调度</title>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/showcase.css">
+<script defer src="/live_vla.js"></script>
 <script defer src="/showcase.js"></script>
 <script defer src="/app.js"></script>
 </head>
@@ -36,6 +37,7 @@
   <aside class="show-evidence">
     <section class="card show-task">
       <div class="show-card-head"><div><span class="show-number">02</span><h3>这一刻在做什么</h3></div><span id="show-status" class="chip">载入中</span></div>
+      <span id="live-vla-status" class="chip" hidden></span>
       <h3 id="show-task-name">地面取放 · 入筐过程</h3><p id="show-stage">正在读取运行记录</p>
       <div class="show-model"><span>动作模型</span><b id="show-model">—</b></div>
       <p class="show-caption" id="show-decision-note">展示动作模型的实际输出；本次记录无 VLM 决策文本。</p>
@@ -52,6 +54,19 @@
       <div class="show-card-head"><div><span class="show-number">04</span><h3>结果核验</h3></div><span class="chip warn">待核验</span></div>
       <div id="show-result">是否抓稳、是否入筐，需要独立证据。</div>
       <p class="show-caption" id="show-result-detail">这份日志记录了动作与夹爪条件，未提供物体入筐的独立判定。</p>
+      <details id="live-vla-details" hidden>
+        <summary>实时 VLA 请求与执行证据</summary>
+        <dl class="live-vla-fields">
+          <dt>请求输入 · state23</dt><dd><pre id="live-vla-input">尚无请求输入</pre><div id="live-vla-images"></div></dd>
+          <dt>模型输出 · action23</dt><dd><pre id="live-vla-output">尚无模型返回</pre></dd>
+          <dt>模型返回的 CoT</dt><dd><pre id="live-vla-cot">未提供</pre></dd>
+          <dt>推理与请求耗时</dt><dd><pre id="live-vla-timing">未提供</pre></dd>
+          <dt>实际下发目标</dt><dd><pre id="live-vla-target">尚无下发记录</pre></dd>
+          <dt>反馈采样</dt><dd><pre id="live-vla-feedback">尚无反馈记录</pre></dd>
+          <dt>结果证据 · 独立待核验</dt><dd><pre id="live-vla-verification">尚无结果证据</pre></dd>
+          <dt>事件与来源</dt><dd><pre id="live-vla-source">等待 VLA 事件</pre></dd>
+        </dl>
+      </details>
       <button id="show-detail">查看这一刻的模型细节 ↗</button>
     </section>
   </aside>

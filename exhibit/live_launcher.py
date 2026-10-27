@@ -22,10 +22,41 @@ from urllib.request import ProxyHandler, build_opener
 from evidence import (FRESH_SECONDS, MAX_TELEMETRY_BYTES, _check_finite,
                       _reject_constant, _telemetry_state)
 from launcher import LaunchError, NoRedirect, ensure_server, open_browser, stop_owned_server
+from vla_evidence import VLAStore
+from vla_receiver import Receiver
 
 
 class LiveError(ValueError):
     pass
+
+
+def start_remote_observer(robot_ip, user="nvidia", ssh_port=22,
+                          script="/home/nvidia/r1_exhibit_observer/start_observer.sh",
+                          port=8774):
+    """Start only the installed read-only observer; it owns no robot control."""
+    try:
+        address = str(ipaddress.ip_address(robot_ip))
+    except ValueError as exc:
+        raise LiveError("VLA 旁路机器人 IP 无效。") from exc
+    if (not isinstance(user, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", user)
+            or type(ssh_port) is not int or not 1 <= ssh_port <= 65535
+            or type(port) is not int or not 1 <= port <= 65535
+            or not isinstance(script, str) or not script.startswith("/")
+            or any(ord(c) < 32 for c in script)):
+        raise LiveError("VLA 旁路 SSH 参数无效。")
+    ssh = shutil.which("ssh")
+    if ssh is None:
+        raise LiveError("未找到 SSH；请手动启动机器人只读 VLA 旁路。")
+    command = "VLA_OBSERVER_PORT=%d bash %s" % (port, shlex.quote(script))
+    print("通过 SSH 启动已安装的只读 VLA 采集旁路；不启动技能或动作。", flush=True)
+    try:
+        result = subprocess.run([ssh, "-T", "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=5",
+            "-o", "ServerAliveCountMax=3", "-o", "StrictHostKeyChecking=ask", "-p", str(ssh_port),
+            user + "@" + address, command], timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise LiveError("只读 VLA 旁路启动未完成；相机可继续使用。") from exc
+    if result.returncode:
+        raise LiveError("只读 VLA 旁路启动失败，退出码 %s。" % result.returncode)
 
 
 def bridge_reachable(robot_ip, robot_port, timeout=2):
@@ -143,6 +174,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="接收机器人三路相机画面并启动本地实时展示")
     parser.add_argument("--robot-ip", default="172.18.21.239")
     parser.add_argument("--robot-port", type=int, default=8772)
+    parser.add_argument("--vla-port", type=int, default=8774, help="只读 VLA 事件旁路端口")
+    parser.add_argument("--vla-db", help="VLA 记录数据库；默认位于相机快照旁的 vla.sqlite3")
+    parser.add_argument("--no-vla", action="store_true", help="仅接收现有相机快照")
+    parser.add_argument("--vla-bridge-script", default="/home/nvidia/r1_exhibit_observer/start_observer.sh",
+                        help="机器人已经安装的只读 VLA 旁路启动脚本")
     parser.add_argument("--robot-user", default="nvidia", help="机器人 SSH 用户名")
     parser.add_argument("--ssh-port", type=int, default=22, help="机器人 SSH 端口")
     parser.add_argument("--bridge-script", default="/home/nvidia/r1pro_ws/vision_event_capture/live_stream/start_bridge.sh",
@@ -159,7 +195,7 @@ def main(argv=None):
         address = ipaddress.ip_address(args.robot_ip)
     except ValueError:
         parser.error("--robot-ip 必须为有效 IP 地址")
-    if not all(1 <= value <= 65535 for value in (args.robot_port, args.port, args.ssh_port)):
+    if not all(1 <= value <= 65535 for value in (args.robot_port, args.port, args.ssh_port, args.vla_port)):
         parser.error("端口必须在 1 到 65535 之间")
     if not math.isfinite(args.wait_seconds) or args.wait_seconds < 0:
         parser.error("--wait-seconds 必须为有限非负秒数")
@@ -189,9 +225,8 @@ def main(argv=None):
             # it through the just-released receiver lock.
             resources.callback(stop_server)
             print("等待机器人三路实时画面：" + source, flush=True)
-            if not args.no_ssh and not bridge_reachable(str(address), args.robot_port):
-                start_remote_bridge(str(address), robot_user=args.robot_user,
-                                    ssh_port=args.ssh_port, bridge_script=args.bridge_script)
+            # Original robot files/processes are outside this feature's write scope.
+            # Only connect to the existing camera interface; never invoke its scripts.
             deadline, last_error = time.monotonic() + args.wait_seconds, None
             while True:
                 try:
@@ -206,10 +241,27 @@ def main(argv=None):
                     if remaining <= 0:
                         raise LiveError("等待有效三路画面超时：%s" % exc) from exc
                     time.sleep(min(1, remaining))
-            owned = ensure_server(args.port, args.db, telemetry_file=snapshot)
+            vla_path = None
+            if not args.no_vla:
+                vla_path = Path(args.vla_db).expanduser().resolve() if args.vla_db else snapshot.with_name("vla.sqlite3")
+                if not args.no_ssh and not bridge_reachable(str(address), args.vla_port):
+                    try:
+                        start_remote_observer(str(address), args.robot_user, args.ssh_port,
+                                              args.vla_bridge_script, args.vla_port)
+                    except LiveError as exc:
+                        print(str(exc) + " 将继续重试接收，保留相机展示。", flush=True)
+                # Register close before start so even interrupted setup releases the DB.
+                vla_store = VLAStore(vla_path)
+                resources.callback(vla_store.close)
+                receiver = Receiver("http://%s:%d" % (host, args.vla_port), vla_store)
+                resources.callback(receiver.close)
+                receiver.start()
+            owned = ensure_server(args.port, args.db, telemetry_file=snapshot, vla_db=vla_path)
             url = "http://127.0.0.1:%d/?source=live" % args.port
             print("\nR1 实时展示：" + url, flush=True)
             print("三路画面已接入；保持此窗口开启，按 Ctrl+C 停止本次接收器。", flush=True)
+            if vla_path is not None:
+                print("VLA 事件独立接收并持续保存；旁路未连接时相机仍正常显示。", flush=True)
             if owned is None:
                 print("已复用现有展示服务；退出接收器时保留该服务。", flush=True)
             if not args.no_browser and not open_browser(url, args.port):

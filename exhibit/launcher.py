@@ -34,14 +34,15 @@ def _server_path(value):
     return path if path.is_absolute() else ROOT / path
 
 
-def expected_identity(db=None, telemetry_file=None):
+def expected_identity(db=None, telemetry_file=None, vla_db=None):
     db_path = (ROOT / "data" / "fleet-four.sqlite3" if db is None else
                ":memory:" if str(db) == ":memory:" else _server_path(db))
     telemetry_path = None if telemetry_file is None else _server_path(telemetry_file)
-    return instance_identity(ROOT, db_path, FLEET_SIZE, telemetry_path)
+    vla_path = None if vla_db is None else _server_path(vla_db)
+    return instance_identity(ROOT, db_path, FLEET_SIZE, telemetry_path, vla_db=vla_path)
 
 
-def probe(port, db=None, telemetry_file=None):
+def probe(port, db=None, telemetry_file=None, vla_db=None):
     """Return absent/exhibit/incompatible/occupied without modifying any service."""
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=0.4):
@@ -59,7 +60,7 @@ def probe(port, db=None, telemetry_file=None):
         if health.get("ok") is True and health.get("simulation") is True:
             if page == (ROOT / "static" / "index.html").read_bytes():
                 matches = (health.get("fleet_size") == FLEET_SIZE and
-                           health.get("instance_identity") == expected_identity(db, telemetry_file))
+                           health.get("instance_identity") == expected_identity(db, telemetry_file, vla_db))
                 return "exhibit" if matches else "incompatible"
     except (OSError, ValueError, AttributeError):
         pass
@@ -81,8 +82,8 @@ def stop_owned_server(process):
         process.wait(timeout=4)
 
 
-def ensure_server(port, db=None, timeout=10, telemetry_file=None):
-    state = probe(port, db, telemetry_file)
+def ensure_server(port, db=None, timeout=10, telemetry_file=None, vla_db=None):
+    state = probe(port, db, telemetry_file, vla_db)
     if state == "exhibit":
         return None
     if state == "incompatible":
@@ -96,6 +97,8 @@ def ensure_server(port, db=None, timeout=10, telemetry_file=None):
         command.extend(["--db", str(db)])
     if telemetry_file is not None:
         command.extend(["--telemetry-file", str(telemetry_file)])
+    if vla_db is not None:
+        command.extend(["--vla-db", str(vla_db)])
     options = {"cwd": str(ROOT), "env": dict(os.environ, PYTHONUTF8="1")}
     if os.name == "nt":
         options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
@@ -107,7 +110,7 @@ def ensure_server(port, db=None, timeout=10, telemetry_file=None):
         while time.monotonic() < deadline:
             if process.poll() is not None:
                 raise LaunchError("服务未能启动（退出码 %s）；请查看上面的错误信息。" % process.returncode)
-            if probe(port, db, telemetry_file) == "exhibit" and process.poll() is None:
+            if probe(port, db, telemetry_file, vla_db) == "exhibit" and process.poll() is None:
                 return process
             time.sleep(0.15)
         raise LaunchError("等待本地服务启动超时；请检查端口和数据目录权限。")
@@ -172,6 +175,7 @@ def main(argv=None):
     parser.add_argument("--port", type=int, default=8771)
     parser.add_argument("--db", help="可选：使用指定的本地模拟数据库；相对路径以 exhibit 目录为准")
     parser.add_argument("--telemetry-file", help="可选：读取本机实时快照；相对路径以 exhibit 目录为准")
+    parser.add_argument("--vla-db", help="可选：读取独立 VLA 事件数据库")
     parser.add_argument("--no-browser", action="store_true", help="只启动服务，不打开浏览器")
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
@@ -186,7 +190,7 @@ def main(argv=None):
         if signum is not None:
             previous_signals[signum] = signal.signal(signum, interrupt)
     try:
-        owned = ensure_server(args.port, args.db, telemetry_file=args.telemetry_file)
+        owned = ensure_server(args.port, args.db, telemetry_file=args.telemetry_file, vla_db=args.vla_db)
         url = "http://127.0.0.1:%d/" % args.port
         print("\nR1 展示台：" + url, flush=True)
         if owned is None:

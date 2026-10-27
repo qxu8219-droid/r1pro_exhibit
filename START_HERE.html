@@ -30,10 +30,10 @@
   <p class="muted">把 ZIP <strong>完整解压</strong>到可写的本地文件夹，例如桌面。保持文件夹结构，提前在展台电脑安装 Python 3.9+ 和 Chrome 或 Edge；交付包不附带这些软件。</p>
   <div class="grid">
     <div class="card"><span class="stepnum">唯一启动入口</span><h3>运行 start_live.sh</h3><pre><code>./start_live.sh</code></pre><p>当前 Linux 环境默认连接 172.18.21.239，自动接收相机并进入实时观察。保持终端开启。</p></div>
-    <div class="card"><span class="stepnum">启动前提</span><h3>自动启动已有相机桥</h3><p>机器人相机端口未运行时，通过 SSH 执行已安装的启动脚本；按提示输入密码。源码和配置不变。接口已有服务时直接复用，空画面则等待。</p></div>
+    <div class="card"><span class="stepnum">启动前提</span><h3>读取相机与VLA日志</h3><p>只读VLA旁路未运行时，通过SSH启动独立新目录里的采集器；按提示输入密码。原机器人文件和启动命令不变，相机接口只读。</p></div>
     <div class="card"><span class="stepnum">使用说明</span><h3>诊断与退出</h3><pre><code>./start_live.sh --check</code></pre><p>只检查画面。正常启动后 Ctrl+C 退出。完整步骤见 <a href="LIVE_START.txt">LIVE_START.txt</a>。</p></div>
   </div>
-  <div class="note"><strong>看到三路相机和“真机记录 · 回放”，就可以开始熟悉。</strong> 页面默认进入展会主屏；包内不含运行数据库，首次启动自动建立干净的四机模拟。本机地址为 <a href="http://127.0.0.1:8771/">http://127.0.0.1:8771/</a>；局域网同事访问 <code>http://服务电脑的局域网IPv4:8771/</code>。讲解前先关闭顶部“自动轮播”，来源保持“真实运行记录”。</div>
+  <div class="note"><strong>start_live.sh 打开三路相机的“实时观察”；右侧接收独立 VLA 执行证据。</strong> 页面进入展会主屏，来源也可切换至原有“真实运行记录”。本机地址为 <a href="http://127.0.0.1:8771/">http://127.0.0.1:8771/</a>；局域网同事访问 <code>http://服务电脑的局域网IPv4:8771/</code>。讲解前先关闭顶部“自动轮播”。首次接入与只读旁路说明见 <a href="LIVE_START.txt">LIVE_START.txt</a>。</div>
   <div class="grid">
     <figure class="preview"><a href="exhibit/preview_showcase_1920x1080.png" target="_blank"><img src="exhibit/preview_showcase_1920x1080.png" alt="展会主屏预览：三路相机与动作证据"></a><figcaption><strong><kbd>3</kbd> 展会主屏</strong>先看相机输入、模型输出与下发反馈；四个章节可快速定位。</figcaption></figure>
     <figure class="preview"><a href="exhibit/preview_replay_1920x1080.png" target="_blank"><img src="exhibit/preview_replay_1920x1080.png" alt="详细回放预览：相机、预测和执行曲线"></a><figcaption><strong><kbd>2</kbd> 模型推理回放</strong>看当前段 32 步预测、已下发目标、反馈和请求时延。</figcaption></figure>
@@ -92,7 +92,7 @@
     <tr><td>四台机器真的在跑吗？</td><td>四机页是本地离散事件模拟，展示 2 台 Pro + 2 台 Lite 的接力、资源预约、回执和恢复逻辑。当前没有连接四台实机。</td></tr>
     <tr><td>这是 VLM 在思考吗？</td><td>这两条真实记录包含动作模型输出，没有 VLM 文字决策。车队默认“规则调度”；另有可配置的模型调度接口，但本包无需配置即可展示。</td></tr>
     <tr><td>有没有成功率或精度？</td><td>现有两条记录的结果保持“待核验”，不能据此给出整体成功率。目标/反馈偏差没有做时序对齐，不能作为跟踪精度。闭合条件和张开指令也不等于抓稳或入筐成功。</td></tr>
-    <tr><td>可以接实时吗？</td><td>主屏已留本机 JSON 快照的只读入口，支持相机、阶段等字段；本交付版尚未接机器。切到“实时观察”显示未连接是预期状态，回到“真实运行记录”即可继续演示。</td></tr>
+    <tr><td>可以接实时吗？</td><td>实时观察保留现有三路相机，通过独立只读旁路展示VLA输入、预测、下发、反馈与结果证据。原机器人文件及回放功能不变；接入步骤见LIVE_START.txt。</td></tr>
   </tbody></table></div>
 </section>
 
