@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>R1 展示台 · 同学上手与现场讲解</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1016;--surface:#121a24;--surface-2:#182331;--line:#263445;--text:#eef3f8;--text-2:#aab8c8;--muted:#7c8a9b;--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s7:#9085e9;--bad:#e66767;font-family:"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:82px}body{margin:0;background:var(--bg);color:var(--text);line-height:1.75;font-size:16px}a{color:#87b8f3;text-underline-offset:4px}a:hover{color:var(--text)}header{position:sticky;top:0;z-index:2;border-bottom:1px solid var(--line);background:var(--bg)}nav{max-width:1320px;margin:auto;display:flex;gap:24px;align-items:center;padding:16px 32px}nav strong{margin-right:auto;font-size:18px}nav a{font-size:14px;color:var(--text-2);text-decoration:none}main{max-width:1320px;margin:auto;padding:36px 32px 64px}h1{font-size:44px;line-height:1.25;letter-spacing:-1px;margin:12px 0 20px}h2{font-size:27px;line-height:1.4;margin:0 0 20px}h3{font-size:19px;line-height:1.5;margin:0 0 10px}p{margin:0 0 14px}section{margin-bottom:36px}.eyebrow{font-size:13px;letter-spacing:2px;color:var(--s1);font-weight:700}.lead{font-size:19px;max-width:940px;color:var(--text-2)}.pills{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}.pill{font-size:13px;padding:5px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:30px;color:var(--text-2)}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0}.button{display:inline-block;text-decoration:none;background:var(--s1);border:1px solid var(--s1);padding:9px 20px;border-radius:8px;color:white;font-weight:650}.button.secondary{background:var(--surface);border-color:var(--line);color:var(--text)}.muted,small{color:var(--text-2)}.small,small{font-size:13px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.card{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:22px;min-width:0}.card p:last-child{margin-bottom:0}.note{border-left:3px solid var(--s3);background:var(--surface-2);padding:14px 18px;border-radius:0 8px 8px 0;margin:18px 0;color:var(--text-2)}.stepnum{font-size:13px;color:var(--s1);font-weight:700;display:block;margin-bottom:8px}.preview{margin:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--bg)}.preview img{display:block;width:100%;height:auto;aspect-ratio:16/9}.preview figcaption{padding:14px 18px;font-size:14px;color:var(--text-2)}.preview figcaption strong{display:block;font-size:17px;color:var(--text);margin-bottom:4px}kbd,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:.9em}kbd{color:var(--text);font-weight:700;white-space:nowrap}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:13px 16px;font-size:13px;line-height:1.7;margin:12px 0;color:var(--text-2)}pre code{background:transparent;border:0;padding:0;font-size:inherit}ul,ol{margin:10px 0;padding-left:23px}li{margin-bottom:7px}li:last-child{margin-bottom:0}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}table{border-collapse:collapse;width:100%;background:var(--surface);font-size:15px}th,td{padding:16px 18px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:var(--surface-2);font-size:13px;color:var(--text-2);font-weight:600}tr:last-child td{border-bottom:0}.script td:first-child{width:11%;white-space:nowrap;color:var(--s1);font-weight:650}.script td:nth-child(2){width:38%}.script td:last-child{color:var(--text-2)}.checklist{list-style:none;padding:0;margin:0}.checklist li{position:relative;padding:12px 12px 12px 35px;margin:0;border-bottom:1px solid var(--line)}.checklist li:last-child{border-bottom:0}.checklist li:before{content:"□";position:absolute;left:8px;color:var(--s3);font-size:20px;top:8px}.tag{color:var(--s3);font-size:13px;font-weight:700}.faq{margin-bottom:12px}.faq summary{cursor:pointer;font-size:17px;font-weight:650}.faq[open] summary{margin-bottom:12px}.faq p{color:var(--text-2)}footer{border-top:1px solid var(--line);padding-top:24px;font-size:13px;color:var(--muted)}.hero{padding-bottom:4px}.quote{font-size:18px;font-weight:600;color:var(--text);margin:12px 0}.boundary td:first-child{width:23%;font-weight:650}.boundary td:last-child{color:var(--text-2)}
+@media(max-width:900px){nav{padding:14px 20px;gap:14px;flex-wrap:wrap}nav strong{width:100%}main{padding:28px 20px 48px}.grid,.grid.two{grid-template-columns:1fr}h1{font-size:34px}h2{font-size:24px}.script td:first-child{white-space:normal}.table-wrap{font-size:14px}th,td{padding:12px}.script{min-width:640px}html{scroll-padding-top:122px}}
+@media print{header,.actions{display:none}body{color:#15202a;background:white;font-size:11pt}main{padding:0;max-width:none}section{break-inside:avoid;margin-bottom:22px}.card,table,.note,th,pre,.pill{background:white;color:#15202a;border-color:#bbc5ce}p,small,.lead,.muted,.script td:last-child,.boundary td:last-child,.faq p{color:#354553}h1{font-size:28pt}h2{font-size:20pt}a{color:#235c9c}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.two{grid-template-columns:1fr 1fr}.preview figcaption{color:#354553}.preview figcaption strong{color:#15202a}details{display:block}footer{color:#354553}}
+</style>
+</head>
+<body>
+<!-- 交付源文件保存在 exhibit/delivery/；打包时拷到包根。以下相对链接按包根布局解析。 -->
+<header><nav aria-label="手册导航"><strong>R1 展示台 · 交付手册</strong><a href="#start">启动</a><a href="#practice">10 分钟熟悉</a><a href="#script">3 分钟讲解</a><a href="#unattended">无人展示</a><a href="#help">遇到问题</a></nav></header>
+<main>
+<section class="hero">
+  <div class="eyebrow">EXHIBITION KIT / 2026.10.27</div>
+  <h1>把动作讲清楚，<br>把接力与恢复展示出来。</h1>
+  <p class="lead">这份交付包让同学在本机完成熟悉、讲解和循环展示。先看真实动作记录，再看同一时刻的模型细节，最后用四机模拟说明一辆物资车怎样交接、遇到中断怎样恢复。</p>
+  <div class="pills"><span class="pill">Python 3.9+ · 无需 pip</span><span class="pill">本地 Chrome / Edge</span><span class="pill">离线运行 · 无需 API 或密钥</span><span class="pill">推荐 1920 × 1080 · 单屏</span></div>
+  <p><a href="R1_Exhibition_Handbook.docx">下载可编辑的 6 页 Word 交接手册</a></p>
+  <div class="actions"><a class="button" href="http://127.0.0.1:8771/" target="_blank" rel="noopener">启动后，打开展示台 ↗</a><a class="button secondary" href="exhibit/static/replays/replay_live_run_20261019T093806212123Z.html" target="_blank" rel="noopener">无需启动，直接看回放 ↗</a></div>
+  <p class="small muted">本手册可直接双击打开。完整展示先按下方方法启动；“直接看回放”只播放详细记录，不含主屏与四机模拟。</p>
+</section>
+
+<section id="start">
+  <h2>01 · 先启动，再看效果</h2>
+  <p class="muted">把 ZIP <strong>完整解压</strong>到可写的本地文件夹，例如桌面。保持文件夹结构，提前在展台电脑安装 Python 3.9+ 和 Chrome 或 Edge；交付包不附带这些软件。</p>
+  <div class="grid">
+    <div class="card"><span class="stepnum">WINDOWS</span><h3>双击 run.bat</h3><p>在解压后的包根找到 <code>run.bat</code>。浏览器会打开全屏展示，启动终端保持开启。</p><p class="small muted">Python 安装时勾选 “Add Python to PATH”。若没有自动开浏览器，手动访问终端显示的本机地址。</p></div>
+    <div class="card"><span class="stepnum">LINUX</span><h3>在包根运行 sh run.sh</h3><pre><code>sh run.sh</code></pre><p class="small muted">也可把 run.sh 设为可执行，再在文件管理器选择“在终端运行”。桌面环境须能打开本地浏览器。</p></div>
+    <div class="card"><span class="stepnum">MAC</span><h3>双击 run.command</h3><p>若文件权限未保留，打开终端，进入解压后的包根，再运行：</p><pre><code>sh run.sh</code></pre><p class="small muted">出现系统拦截时，先确认文件来源；也可让现场同学从终端按上面的命令启动。</p></div>
+  </div>
+  <div class="note"><strong>看到三路相机和“真机记录 · 回放”，就可以开始熟悉。</strong> 页面默认进入展会主屏；包内不含运行数据库，首次启动自动建立干净的四机模拟。本机地址为 <a href="http://127.0.0.1:8771/">http://127.0.0.1:8771/</a>；局域网同事访问 <code>http://服务电脑的局域网IPv4:8771/</code>。讲解前先关闭顶部“自动轮播”，来源保持“真实运行记录”。</div>
+  <div class="grid">
+    <figure class="preview"><a href="exhibit/preview_showcase_1920x1080.png" target="_blank"><img src="exhibit/preview_showcase_1920x1080.png" alt="展会主屏预览：三路相机与动作证据"></a><figcaption><strong><kbd>3</kbd> 展会主屏</strong>先看相机输入、模型输出与下发反馈；四个章节可快速定位。</figcaption></figure>
+    <figure class="preview"><a href="exhibit/preview_replay_1920x1080.png" target="_blank"><img src="exhibit/preview_replay_1920x1080.png" alt="详细回放预览：相机、预测和执行曲线"></a><figcaption><strong><kbd>2</kbd> 模型推理回放</strong>看当前段 32 步预测、已下发目标、反馈和请求时延。</figcaption></figure>
+    <figure class="preview"><a href="exhibit/preview_fleet_1920x1080.png" target="_blank"><img src="exhibit/preview_fleet_1920x1080.png" alt="四机调度预览：两台 Pro 和两台 Lite 接力"></a><figcaption><strong><kbd>1</kbd> 车队调度</strong>2 台 R1 Pro + 2 台 R1 Lite，模拟接力、返空和异常恢复。</figcaption></figure>
+  </div>
+</section>
+
+<section id="practice">
+  <h2>02 · 10 分钟熟悉清单</h2>
+  <div class="grid two">
+    <div class="card"><h3>前 5 分钟：会看、会切换</h3><ul class="checklist">
+      <li><strong>0–1 分钟：</strong>启动成功，关闭“自动轮播”；确认主屏来源是“真实运行记录”。</li>
+      <li><strong>1–3 分钟：</strong>试主屏的暂停、播放、从头播放和四个章节；换一次运行记录，再切回第一条。</li>
+      <li><strong>3–4 分钟：</strong>点“03 闭合条件”，再点“查看这一刻的模型细节 ↗”；确认详细回放停在同一条记录、同一时刻。</li>
+      <li><strong>4–5 分钟：</strong>练习 <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> 切画面，空格播放/暂停，左右箭头跳 2 秒。</li>
+    </ul></div>
+    <div class="card"><h3>后 5 分钟：会演示、会收场</h3><ul class="checklist">
+      <li><strong>5–7 分钟：</strong>按 <kbd>1</kbd>，关闭底栏“自动演示”；选“标准交接”→“重置”→“开始运行”。观察同一辆 C17 落地交接。</li>
+      <li><strong>7–8 分钟：</strong>有机器人正在执行时点“机器人掉线”，看到待核对；点“恢复并核对”，看记录与任务继续。</li>
+      <li><strong>8–9 分钟：</strong>按下面的 3 分钟脚本演练一次；时间紧时不等整轮跑完。</li>
+      <li><strong>9–10 分钟：</strong>练退出与重启；再设置无人展示。确认现场分辨率、文字、声音环境与鼠标都适合讲解。</li>
+    </ul></div>
+  </div>
+  <p class="small muted">快捷键在下拉框、输入框编辑时不会抢按键；先点击画面空白处再按即可。Windows / Linux 常规窗口用 F11 全屏；独立全屏窗口可直接 Alt+F4 退出。Mac 用 ⌘W 关闭展示窗口。</p>
+</section>
+
+<section id="script">
+  <h2>03 · 可以照着讲的 3 分钟演示</h2>
+  <p class="muted">讲解前关闭“自动轮播”和车队页“自动演示”，决策选“规则调度”。主屏选第一条真实运行记录。下面的“机器人掉线”只影响本地模拟。</p>
+  <div class="table-wrap"><table class="script"><thead><tr><th>时间</th><th>手上操作</th><th>对观众说</th></tr></thead><tbody>
+    <tr><td>0:00–0:35</td><td>按 <kbd>3</kbd>。播放主屏；指向三路相机，再指向右侧“动作预测”和“下发与反馈记录”。</td><td>“这里是 R1 Pro 取布放筐的真实运行记录。相机、模型预测和执行反馈来自同一次运行，我们能把一个动作的依据和过程放在一起看。”</td></tr>
+    <tr><td>0:35–1:10</td><td>点“03 闭合条件”，再点“查看这一刻的模型细节 ↗”。指向预测虚线、已下发曲线与反馈。</td><td>“现在停在同一时刻。虚线是这一段的 32 步动作预测；另外两条记录展示目标与反馈。夹爪条件有日志，物体是否抓稳、是否入筐还要独立核验。”</td></tr>
+    <tr><td>1:10–1:55</td><td>按 <kbd>1</kbd>。选“标准交接”→“重置”→“开始运行”。看 C17 从 Pro 01 送出；指向交接位、任务进度和执行记录。</td><td>“这一页用四机模拟说明运输组织：Pro 01 → Lite 01 → Lite 02 → Pro 02。交接先放车、退出，再由下一台接走；工位模拟确认卸空后，空车反向补回。”</td></tr>
+    <tr><td>1:55–2:30</td><td>有机器人正在执行时，点“机器人掉线”。看到“待核对 / UNKNOWN”和保留的资源，再点“恢复并核对”。若仍暂停，点“开始运行”。</td><td>“遇到通信中断，系统先保留资源并等待核对。这里由模拟器核对保存状态，然后释放或重试；接真机时需要真实设备回执与状态核验。”</td></tr>
+    <tr><td>2:30–3:00</td><td>确认执行记录出现恢复信息。按 <kbd>3</kbd>，点“从头播放”。</td><td>“这个展示包呈现两部分：一部分是真实动作的可追溯记录，一部分是接力运输与恢复的调度模拟。下一步把医院现场观察和执行回执接到同一条证据链上。”</td></tr>
+  </tbody></table></div>
+  <div class="note"><strong>这场展示最值得讲的点：</strong>同一时刻能追到输入、预测与反馈；同一辆车的归属和交接状态看得清；异常会显式进入待核对，并有恢复过程。三分钟无需等完整往返结束，完整流程留给观众继续看。</div>
+</section>
+
+<section id="unattended">
+  <h2>04 · 同学讲解与无人展示，两套设置</h2>
+  <div class="grid two">
+    <div class="card"><span class="tag">有人讲解</span><h3>把画面停在你正在讲的地方</h3><p>顶部<strong>自动轮播：关闭</strong>。车队底栏<strong>自动演示：关闭</strong>。用按键或顶部标签切画面；车队用“开始运行 / 暂停 / 单步”，回放用暂停或章节跳转。</p><p class="small muted">车队点“暂停”或“单步”也会自动关闭其“自动演示”。单纯切换到主屏不会替你暂停车队模拟。</p></div>
+    <div class="card"><span class="tag">无人值守</span><h3>先恢复正常，再勾两个选项</h3><p>车队页选“规则调度”和“标准交接”，点“重置”，勾上底栏<strong>自动演示</strong>。再勾顶部<strong>自动轮播</strong>，建议选 <strong>每 90 秒切换</strong>。未勾选时选项置灰，开启或调整间隔后重新计时。</p><p class="small muted">无人前先演练一轮。发生掉线或待核对时自动演示会等待同学处理，不会反复重试启动。</p></div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>开关</th><th>它做什么</th><th>它不会做什么</th></tr></thead><tbody>
+    <tr><td><strong>自动轮播</strong><br><small>顶部，默认关闭</small></td><td>按所选间隔切换：主屏 → 车队 → 详细回放。进入详细回放从头播；主屏离开暂停、返回继续。</td><td>不负责恢复故障，也不改变车队运行模式。</td></tr>
+    <tr><td><strong>自动演示</strong><br><small>车队底栏，默认开启</small></td><td>驱动车队模拟；一轮完成停 8 秒，换下一场景：标准交接 → 满车位被占 → 首次抓取失败。</td><td>不切换三个画面；掉线或待核对时等待处理。</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="scope">
+  <h2>05 · 观众问到时，准确地回答</h2>
+  <div class="table-wrap"><table class="boundary"><thead><tr><th>观众的问题</th><th>本交付版的答案</th></tr></thead><tbody>
+    <tr><td>这是医院直播吗？</td><td>当前相机画面来自 R1 Pro 取布放筐的历史运行记录，原始输入是 224×224 采样帧；不是医院现场视频直播。</td></tr>
+    <tr><td>四台机器真的在跑吗？</td><td>四机页是本地离散事件模拟，展示 2 台 Pro + 2 台 Lite 的接力、资源预约、回执和恢复逻辑。当前没有连接四台实机。</td></tr>
+    <tr><td>这是 VLM 在思考吗？</td><td>这两条真实记录包含动作模型输出，没有 VLM 文字决策。车队默认“规则调度”；另有可配置的模型调度接口，但本包无需配置即可展示。</td></tr>
+    <tr><td>有没有成功率或精度？</td><td>现有两条记录的结果保持“待核验”，不能据此给出整体成功率。目标/反馈偏差没有做时序对齐，不能作为跟踪精度。闭合条件和张开指令也不等于抓稳或入筐成功。</td></tr>
+    <tr><td>可以接实时吗？</td><td>主屏已留本机 JSON 快照的只读入口，支持相机、阶段等字段；本交付版尚未接机器。切到“实时观察”显示未连接是预期状态，回到“真实运行记录”即可继续演示。</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="help">
+  <h2>06 · 现场遇到问题，按这里处理</h2>
+  <details class="card faq" open><summary>启动不成功，或提示没有 Python</summary><p>完整解压到可写文件夹后再启动，不在 ZIP 预览里运行。可先双击 <code>check.bat</code>（Windows），或在包根运行 <code>sh check.sh</code>（Linux / Mac）；它只检查 Python 与文件完整性，不启动展示。</p><p>完整展示需要 Python 3.9+；Windows 可在终端查 <code>py -3 --version</code> 或 <code>python --version</code>，Linux / Mac 查 <code>python3 --version</code>。Windows 若未加入 PATH，重新运行 Python 安装程序补选后重开终端。</p><p>现场暂时没有 Python：双击 <a href="exhibit/static/replays/replay_live_run_20261019T093806212123Z.html">第一条详细回放 HTML</a>，可离线循环播放；这条备用路径没有车队或主屏。</p></details>
+  <details class="card faq" open><summary>端口 8771 被占用，或打开了旧版本</summary><p>在包根终端改用空闲端口。启动器不会替你结束其他程序；只有同目录、数据库与实时配置匹配的服务才能复用。另一份旧交付包正在运行时，可直接换端口启动这一份。</p><pre><code>Windows：run.bat --port 8772
+Linux / Mac：sh run.sh --port 8772</code></pre><p>此时手动打开 <a href="http://127.0.0.1:8772/">http://127.0.0.1:8772/</a>。若想回到 8771，在原启动终端 Ctrl+C 退出旧服务，再重新启动本包。</p></details>
+  <details class="card faq"><summary>浏览器白屏、相机不出现或服务无法连接</summary><p>确认启动终端还开着且没有错误；本机使用 <code>http://127.0.0.1:端口/</code>，局域网同事使用 <code>http://服务电脑的局域网IPv4:端口/</code>，默认端口为 8771。同事电脑上的 127.0.0.1 指向同事自己的电脑。不要直接双击 <code>exhibit/static/index.html</code>，完整页面需要服务。</p><p>主屏来源选“真实运行记录”，等几秒；然后刷新。Windows / Linux 可 Ctrl+Shift+R，Mac 可 ⌘Shift+R。仍异常时关闭展示窗口、在启动终端 Ctrl+C、重新启动。期间先用独立详细回放作为备用。</p></details>
+  <details class="card faq"><summary>车队停在 UNKNOWN / 待核对，或者不动了</summary><p>按 <kbd>1</kbd> 看执行记录。若为掉线或待核对，点“恢复并核对”，必要时再点“开始运行”；这是模拟状态核验。重启时保存的未完成动作也可能进入待核对。</p><p>只想从头展示：选“规则调度”及“标准交接”→“重置”→“开始运行”。重置会清掉本地这一轮模拟进度；真实回放记录不变。再勾“自动演示”可继续自动换场景。</p></details>
+  <details class="card faq"><summary>显示模型未配置，或模型调度报错</summary><p>交付默认用“规则调度”，不需要模型、API、密钥或网络。误切“模型调度”时，切回“规则调度”，再重置、开始即可。</p><p>需要真实模型实验时由技术同学按 <a href="exhibit/MODEL.md">exhibit/MODEL.md</a> 配置并提前验证。当前接口输入是模拟世界状态与候选动作 JSON，不含相机；接模型后也不能直接称为医院视觉推理。端点配置有效不等于模型已连通。</p></details>
+  <details class="card faq"><summary>怎么退出、重启，哪些进度会保留？</summary><p>Windows / Linux 用 Alt+F4 关闭全屏展示，Mac 用 ⌘W。再到启动终端按 Ctrl+C 停止本次启动的服务；只关浏览器不会停止后台服务。</p><p>如果终端提示“复用现有展示服务”，服务属于最初的启动窗口，去那个窗口停止。重启仍用原启动脚本；模拟数据库保存上一轮状态，想重新讲解就到车队页“重置”。回放文件是静态记录，重启不改变内容。</p></details>
+  <details class="card faq"><summary>分辨率、全屏或快捷键不合适</summary><p>建议屏幕设为 1920×1080，浏览器缩放 100%。快捷键无响应时先点击画面空白处；下拉框有焦点时按键不会切页。若未自动全屏，在普通 Chrome / Edge 窗口使用浏览器全屏菜单（Windows / Linux 常用 F11，Mac 常用 Ctrl+⌘F）。</p><p>Windows Chrome / Edge 的全屏、键盘与现场缩放请在正式开展前用交付包走完一次清单。</p></details>
+</section>
+
+<section id="files">
+  <h2>07 · 交接时一起带走什么</h2>
+  <div class="grid two">
+    <div class="card"><h3>给负责展示的同学</h3><p>整个解压文件夹、这份手册和 <a href="QUICKSTART.txt">QUICKSTART.txt</a>。先在目标电脑演练一遍，然后保留能工作的这一份。所有图片、字体回退与回放资源都在本地。</p><p class="small muted">包内 <a href="SHA256SUMS.txt">SHA256SUMS.txt</a> 可由 check.bat / check.sh 核对；无需手动操作清单即可启动展示。</p></div>
+    <div class="card"><h3>给继续接入的技术同学</h3><p><a href="exhibit/README.md">展示台说明</a> · <a href="exhibit/LIVE.md">只读实时快照约定</a> · <a href="exhibit/MODEL.md">模型接口约定</a> · <a href="replay_panel/README.md">新增回放说明</a>。</p><p class="small muted">两条自包含回放已打包，可直接展示。生成新的回放时需要另行提供真机 run 数据；本包不包含原始 training 数据、机器人连接配置或模型密钥。</p></div>
+  </div>
+</section>
+<section><h2>2026-10-27 v3 更新</h2><p>修复隐藏回放页延迟切屏消息和快速切屏焦点争用；轮播间隔明确标注，开启或调整后重新计时。末尾张开指令缺少后续画面和反馈时，两处画面均显示提示；这不代表已确认放下完成，原始记录保持不变。</p></section>
+<footer>R1 展示台 · 同学交付版 · 2026-10-27<br>展示顺序：真实动作记录 → 同时间模型细节 → 四机接力与恢复。交付包本地运行，默认不连接模型服务或机器人。</footer>
+</main>
+</body>
+</html>

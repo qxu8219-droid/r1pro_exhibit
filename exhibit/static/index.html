@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>R1 车队运维调度</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/showcase.css">
+<script defer src="/showcase.js"></script>
+<script defer src="/app.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div><h1>R1 车队运维调度 · 展示台</h1><div class="sub" id="screen-subtitle">2 × R1 Pro + 2 × R1 Lite · 四台机队 · 本地模拟</div></div>
+  <nav class="tabs"><button class="tab on" data-screen="showcase">展会主屏<kbd>3</kbd></button><button class="tab" data-screen="fleet">车队调度<kbd>1</kbd></button><button class="tab" data-screen="replay">模型推理回放<kbd>2</kbd></button></nav>
+  <div class="top-right">
+    <div class="rotation"><label title="勾选后按所选间隔依次切换三个画面"><input type="checkbox" id="rotate">自动轮播</label><select id="rotate-sec" aria-label="自动轮播切换间隔" disabled><option value="45">每 45 秒切换</option><option value="90" selected>每 90 秒切换</option><option value="180">每 3 分钟切换</option></select></div>
+    <span id="conn"><i></i><span>连接中</span></span>
+  </div>
+</header>
+
+<section id="showcase-screen" class="screen on" aria-label="真实执行证据展示">
+  <div class="show-heading">
+    <div><div class="show-eyebrow">R1 PRO / 从观察到执行</div><h2>看见现场，也看见动作的依据。</h2></div>
+    <div class="show-source"><span id="show-source-label" class="chip">真机记录 · 回放</span><select id="show-mode" aria-label="主屏数据来源"><option value="recording">真实运行记录</option><option value="live">实时观察</option></select><select id="show-recording" aria-label="选择主屏运行记录"><option>载入记录…</option></select></div>
+  </div>
+  <section class="card show-vision">
+    <div class="show-card-head"><div><span class="show-number">01</span><h3>机器人看到的现场</h3></div><span id="show-frame-note">正在读取真实记录</span></div>
+    <div class="show-cameras">
+      <figure class="show-camera show-head"><div class="show-camera-label"><span>头部相机</span><span id="show-camera-clock">—</span></div><img id="show-head" alt="本次记录的头部相机输入" hidden><div class="show-image-empty" id="show-head-empty">等待相机记录</div><figcaption>模型输入画面<span id="show-resolution">采样帧回放</span></figcaption></figure>
+      <figure class="show-camera"><div class="show-camera-label"><span>左腕相机</span></div><img id="show-left" alt="本次记录的左腕相机输入" hidden><div class="show-image-empty" id="show-left-empty">等待相机记录</div><figcaption>近距离观察<span id="show-left-age">—</span></figcaption></figure>
+      <figure class="show-camera"><div class="show-camera-label"><span>右腕相机</span></div><img id="show-right" alt="本次记录的右腕相机输入" hidden><div class="show-image-empty" id="show-right-empty">等待相机记录</div><figcaption>近距离观察<span id="show-right-age">—</span></figcaption></figure>
+    </div>
+    <div id="show-moment" class="show-moment"><i></i><span>相机输入、动作与反馈来自同一次运行</span><b id="show-segment">—</b></div>
+  </section>
+  <aside class="show-evidence">
+    <section class="card show-task">
+      <div class="show-card-head"><div><span class="show-number">02</span><h3>这一刻在做什么</h3></div><span id="show-status" class="chip">载入中</span></div>
+      <h3 id="show-task-name">地面取放 · 入筐过程</h3><p id="show-stage">正在读取运行记录</p>
+      <div class="show-model"><span>动作模型</span><b id="show-model">—</b></div>
+      <p class="show-caption" id="show-decision-note">展示动作模型的实际输出；本次记录无 VLM 决策文本。</p>
+    </section>
+    <section class="card show-chain">
+      <div class="show-card-head"><div><span class="show-number">03</span><h3>动作怎样成为证据</h3></div></div>
+      <div class="show-evidence-row"><i class="show-dot"></i><div><b>观察输入</b><small id="show-observation">等待相机帧</small></div><strong id="show-observation-value">—</strong></div>
+      <div class="show-evidence-row"><i class="show-dot action"></i><div><b>动作预测</b><small id="show-prediction">等待模型返回</small></div><strong id="show-prediction-value">—</strong></div>
+      <div class="show-evidence-row"><i class="show-dot feedback"></i><div><b>下发与反馈记录</b><small id="show-feedback">等待记录</small></div><strong id="show-feedback-value">—</strong></div>
+      <div class="show-metrics"><div><span>当前请求往返</span><b id="show-rtt">—</b></div><div><span>右爪反馈开度</span><b id="show-gripper">—</b></div></div>
+      <p class="show-caption">反馈在本步指令发送前采样；预测和指令本身不代表动作成功。</p>
+    </section>
+    <section class="card show-verification">
+      <div class="show-card-head"><div><span class="show-number">04</span><h3>结果核验</h3></div><span class="chip warn">待核验</span></div>
+      <div id="show-result">是否抓稳、是否入筐，需要独立证据。</div>
+      <p class="show-caption" id="show-result-detail">这份日志记录了动作与夹爪条件，未提供物体入筐的独立判定。</p>
+      <button id="show-detail">查看这一刻的模型细节 ↗</button>
+    </section>
+  </aside>
+  <section class="card show-bottom">
+    <div class="show-chapters" id="show-chapters" aria-label="运行关键节点"></div>
+    <div class="show-playback"><button id="show-play" class="primary">暂停</button><span id="show-clock">0.0 / 0.0 s</span><input id="show-scrub" type="range" min="0" max="100" step="0.1" value="0" aria-label="主屏回放时间"><select id="show-speed" aria-label="主屏播放速度"><option value="1">1×</option><option value="2">2×</option><option value="0.5">0.5×</option></select><button id="show-restart">从头播放</button></div>
+    <div class="show-provenance"><span id="show-provenance">真实记录 · 正在读取</span><span id="show-boundary">四机调度是独立模拟场景</span></div>
+  </section>
+</section>
+
+<section id="fleet-screen" class="screen">
+  <section class="card" id="floor">
+    <h2>四机接力 <span class="chip">Pro 01 → Lite 01 → Lite 02 → Pro 02</span><span class="chip" id="mission-status">等待开始</span><span class="right">模拟时间 <b id="sim-time">00:00</b> · 世界状态 <span id="world-version">—</span></span></h2>
+    <svg id="floor-map" viewBox="0 0 900 560" role="img" aria-label="两台 Pro 和两台 Lite 接力同一辆车，卸空后反向返回">
+      <defs><pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#17222e" stroke-width="0.8"/></pattern></defs>
+      <rect width="900" height="560" fill="url(#grid)"/>
+      <path d="M99 286L278 204L450 286L622 204L801 286" class="corridor"/><path d="M99 286L278 204L450 286L622 204L801 286" class="corridor-center"/>
+      <text x="40" y="30" class="zone-label">源区（Pro 01）</text><text x="295" y="30" class="zone-label">两段运输（Lite 01 / Lite 02）</text><text x="700" y="30" class="zone-label">工位（Pro 02）</text>
+      <path d="M190 48V530 M710 48V530" class="zone-divider"/>
+      <g id="stations"></g><g id="cart-layer"></g><g id="robot-layer"></g>
+    </svg>
+    <div class="map-legend"><span class="reserved">虚线 · 已预约</span><span class="occupied">绿框 · 车辆就位</span><span class="blocked">红框 · 外部占用</span><span>位置为模拟示意</span></div>
+    <div class="robots" id="robots"></div>
+  </section>
+  <div id="side">
+    <section class="card" id="decision">
+      <h2>调度决策 <span class="chip" id="planner-label">规则</span><span class="right" id="decision-state">等待首次决策</span></h2>
+      <div class="action" id="decision-action">准备就绪</div>
+      <p class="reason" id="decision-reason">开始运行后，调度器从可执行候选里选一个任务，派发前重新核验世界状态版本和资源预约。</p>
+      <div class="cands" id="candidate-list"></div>
+      <div class="dmeta" id="decision-meta"></div>
+    </section>
+    <section class="card" id="mission">
+      <h2>任务 · 满车送出，空车补回 <span class="right" id="mission-id"></span></h2>
+      <div class="track" id="mission-track"></div>
+      <div class="mfoot"><span id="mission-stage">等待任务派发</span><span id="metrics"></span></div>
+    </section>
+    <section class="card" id="events">
+      <h2>执行记录 <span class="chip">最新在上</span><span class="right" id="event-count"></span></h2>
+      <div id="evlist"></div>
+    </section>
+  </div>
+  <section class="card" id="controls">
+    <div class="grp"><button id="start" class="primary">开始运行</button><button id="pause" disabled>暂停</button><button id="step">单步</button></div>
+    <span class="sep"></span>
+    <div class="grp">场景 <select id="scenario"><option value="normal">标准交接</option><option value="blocked_handoff">满车位被占</option><option value="grasp_failure">首次抓取失败</option></select><button id="reset">重置</button></div>
+    <span class="sep"></span>
+    <div class="grp">决策 <select id="planner-mode"><option value="baseline">规则调度</option><option value="model">模型调度</option></select><span id="model-info" class="chip"></span></div>
+    <span class="sep"></span>
+    <div class="grp">制造变化
+      <button data-fault="block_handoff" class="danger">占用主交接位</button><button data-fault="clear_handoff">清除占用</button>
+      <button data-fault="fail_next_grasp" class="danger">下次抓取失败</button><button data-fault="stale_result" class="danger">迟到回执</button>
+      <button data-fault="robot_offline" class="danger">机器人掉线</button><button data-fault="robot_online">恢复并核对</button>
+    </div>
+    <span class="sep"></span>
+    <label class="grp" title="任务完成后自动换场景重跑，展台无人时画面持续在动"><input type="checkbox" id="autodemo" checked>自动演示</label>
+    <span id="auto-status" class="hint">准备自动运行</span>
+    <span class="hint">1 车队 · 2 模型 · 3 主屏</span>
+  </section>
+</section>
+
+<section id="replay-screen" class="screen">
+  <div id="replay-pick"><span>运行记录</span><select id="replay-list" aria-label="选择回放记录"></select><span class="replay-hint">进入此画面从头播放 · 空格暂停 · ← → 跳转</span></div>
+  <iframe id="replay-frame" title="模型推理回放" src="about:blank"></iframe>
+</section>
+<div id="notice"></div>
+</body>
+</html>

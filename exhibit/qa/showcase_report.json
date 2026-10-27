@@ -1,0 +1,388 @@
+{
+  "checked_at": "2026-10-26T14:05:49.047Z",
+  "platform": "darwin",
+  "checks": [
+    {
+      "name": "default screen loads a real recording and can pause",
+      "detail": {
+        "active": true,
+        "mode": "recording",
+        "file": "replay_live_run_20261019T093806212123Z.html",
+        "ready": true,
+        "time": 12.5333,
+        "playing": false,
+        "status": "真机记录 · 回放",
+        "liveConnected": false
+      }
+    },
+    {
+      "name": "all exhibition panels fit at 1920x1080",
+      "detail": [
+        {
+          "selector": ".show-heading",
+          "x": 14,
+          "y": 76,
+          "right": 1906,
+          "bottom": 152
+        },
+        {
+          "selector": ".show-vision",
+          "x": 14,
+          "y": 164,
+          "right": 1210.359375,
+          "bottom": 916
+        },
+        {
+          "selector": ".show-task",
+          "x": 1222.359375,
+          "y": 164,
+          "right": 1906,
+          "bottom": 377.875
+        },
+        {
+          "selector": ".show-chain",
+          "x": 1222.359375,
+          "y": 389.875,
+          "right": 1906,
+          "bottom": 726.3125
+        },
+        {
+          "selector": ".show-verification",
+          "x": 1222.359375,
+          "y": 738.3125,
+          "right": 1906,
+          "bottom": 916
+        },
+        {
+          "selector": ".show-bottom",
+          "x": 14,
+          "y": 928,
+          "right": 1906,
+          "bottom": 1070
+        }
+      ]
+    },
+    {
+      "name": "recording switch clears previous frames and counts while loading"
+    },
+    {
+      "name": "late response from another recording cannot replace the selected run"
+    },
+    {
+      "name": "three cameras match selected recording 1",
+      "detail": {
+        "file": "replay_live_run_20261019T093806212123Z.html",
+        "time": 12.7
+      }
+    },
+    {
+      "name": "three cameras match selected recording 2",
+      "detail": {
+        "file": "replay_live_run_20261019T094447900969Z.html",
+        "time": 7.4
+      }
+    },
+    {
+      "name": "release chapter explains missing post-command images and feedback"
+    },
+    {
+      "name": "chapters and backward seek never present future execution evidence",
+      "detail": {
+        "time": 58.3,
+        "stage": "动作执行中 · 按段预测，逐步下发",
+        "count": "200 步",
+        "prediction": "32 步"
+      }
+    },
+    {
+      "name": "detail view opens the same recording, timestamp and paused state",
+      "detail": {
+        "deepTime": 59.1,
+        "source": "/replays/replay_live_run_20261019T093806212123Z.html",
+        "clock": "59.1 s / 92.6 s",
+        "play": "播放"
+      }
+    },
+    {
+      "name": "detail release notice appears and clears on backward seek"
+    },
+    {
+      "name": "iframe key3 returns to exhibition through real keyboard event"
+    },
+    {
+      "name": "late shortcut from hidden iframe cannot switch back"
+    },
+    {
+      "name": "twelve real keyboard 3-to-1 switches keep one stable visible screen"
+    },
+    {
+      "name": "rapid 2-to-3-to-1 cancels deferred iframe focus"
+    },
+    {
+      "name": "rotation waits a full interval after enabling or changing interval"
+    },
+    {
+      "name": "leaving exhibition pauses playback",
+      "detail": {
+        "pausedTime": 5.200000000000001
+      }
+    },
+    {
+      "name": "missing live snapshot contains no recording frames or counts",
+      "detail": {
+        "state": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "等待实时快照",
+          "liveConnected": false
+        },
+        "images": [
+          {
+            "id": "show-head",
+            "hidden": true,
+            "src": null
+          },
+          {
+            "id": "show-left",
+            "hidden": true,
+            "src": null
+          },
+          {
+            "id": "show-right",
+            "hidden": true,
+            "src": null
+          }
+        ],
+        "metrics": [
+          "—",
+          "—",
+          "—",
+          "—",
+          "—"
+        ],
+        "resolution": "—",
+        "label": "等待实时快照",
+        "task": "等待真实机器人接入",
+        "controls": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "name": "fresh local QA-only telemetry shows matching identity, three cameras and RTT",
+      "detail": {
+        "state": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "只读实时观察",
+          "liveConnected": true
+        },
+        "provenance": "机器人 QA-only · 运行 QA-only-synthetic-run",
+        "label": "只读实时观察",
+        "task": "QA-only local telemetry fixture",
+        "observation": "3 路",
+        "rtt": "12 ms"
+      }
+    },
+    {
+      "name": "hung telemetry reaches the 1600 ms abort deadline, clears evidence and recovers",
+      "detail": {
+        "request": {
+          "calls": 1,
+          "active": 0,
+          "maxActive": 1,
+          "aborted": 1,
+          "started": 15035.79999923706,
+          "elapsed": 1691.7000007629395
+        },
+        "cleared": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "实时源读取失败",
+          "liveConnected": false
+        },
+        "recovered": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "只读实时观察",
+          "liveConnected": true
+        }
+      }
+    },
+    {
+      "name": "independent age guard clears old live images during a nonsettling single-flight request and recovers",
+      "detail": {
+        "request": {
+          "calls": 1,
+          "active": 1,
+          "maxActive": 1
+        },
+        "clearedAge": 5.313999891281128,
+        "cleared": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "实时数据已过期",
+          "liveConnected": false
+        },
+        "recovered": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "只读实时观察",
+          "liveConnected": true
+        }
+      }
+    },
+    {
+      "name": "six-second stale telemetry clears images and counts without reverting to recording",
+      "detail": {
+        "state": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "实时数据已过期",
+          "liveConnected": false
+        },
+        "images": [
+          {
+            "id": "show-head",
+            "hidden": true,
+            "src": null
+          },
+          {
+            "id": "show-left",
+            "hidden": true,
+            "src": null
+          },
+          {
+            "id": "show-right",
+            "hidden": true,
+            "src": null
+          }
+        ],
+        "metrics": [
+          "—",
+          "—",
+          "—",
+          "—",
+          "—"
+        ],
+        "resolution": "—",
+        "label": "实时数据已过期",
+        "task": "等待真实机器人接入",
+        "controls": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "name": "corrupt local JSON clears a previously visible live frame and all counts",
+      "detail": {
+        "state": {
+          "active": true,
+          "mode": "live",
+          "file": "replay_live_run_20261019T093806212123Z.html",
+          "ready": false,
+          "time": 12.632999999999946,
+          "playing": false,
+          "status": "实时数据格式异常",
+          "liveConnected": false
+        },
+        "images": [
+          {
+            "id": "show-head",
+            "hidden": true,
+            "src": null
+          },
+          {
+            "id": "show-left",
+            "hidden": true,
+            "src": null
+          },
+          {
+            "id": "show-right",
+            "hidden": true,
+            "src": null
+          }
+        ],
+        "metrics": [
+          "—",
+          "—",
+          "—",
+          "—",
+          "—"
+        ],
+        "resolution": "—",
+        "label": "实时数据格式异常",
+        "task": "等待真实机器人接入",
+        "controls": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "name": "recording resumes normally after missing, fresh, stale and corrupt live data",
+      "detail": {
+        "active": true,
+        "mode": "recording",
+        "file": "replay_live_run_20261019T093806212123Z.html",
+        "ready": true,
+        "time": 59.6,
+        "playing": false,
+        "status": "真机记录 · 回放",
+        "liveConnected": false
+      }
+    },
+    {
+      "name": "narrow 1100x800 has no horizontal overflow and bottom controls are reachable",
+      "detail": {
+        "scrollY": 554,
+        "bottom": 789.5625,
+        "height": 800
+      }
+    },
+    {
+      "name": "narrow 960x800 has no horizontal overflow and bottom controls are reachable",
+      "detail": {
+        "scrollY": 554,
+        "bottom": 789.5625,
+        "height": 800
+      }
+    },
+    {
+      "name": "no browser JavaScript exceptions"
+    }
+  ]
+}

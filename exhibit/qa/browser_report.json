@@ -1,0 +1,275 @@
+{
+  "checked_at": "2026-10-26T14:05:59.596Z",
+  "platform": "darwin",
+  "checks": [
+    {
+      "name": "1920x1080 fleet fits",
+      "detail": [
+        {
+          "id": "floor",
+          "x": 14,
+          "y": 76,
+          "right": 1095.140625,
+          "bottom": 1010
+        },
+        {
+          "id": "side",
+          "x": 1105.140625,
+          "y": 76,
+          "right": 1906,
+          "bottom": 1010
+        },
+        {
+          "id": "controls",
+          "x": 14,
+          "y": 1020,
+          "right": 1906,
+          "bottom": 1070
+        }
+      ]
+    },
+    {
+      "name": "four actual robot states with eight relay phases",
+      "detail": {
+        "cards": 4,
+        "map": 4,
+        "engine": [
+          "R1",
+          "R2",
+          "R3",
+          "R4"
+        ],
+        "names": [
+          "R1 Pro · 01执行中",
+          "R1 Pro · 02空闲",
+          "R1 Lite · 01空闲",
+          "R1 Lite · 02空闲"
+        ],
+        "phases": 8,
+        "overflow": false
+      }
+    },
+    {
+      "name": "real four-robot API completes full and empty relay with all cards updated",
+      "detail": {
+        "status": "SUCCEEDED",
+        "cart": {
+          "id": "C17",
+          "load": "empty",
+          "station_id": "SOURCE",
+          "held_by": null,
+          "reserved_by": null
+        },
+        "steps": [
+          {
+            "robot": "R1",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R1",
+            "skill": "place_cart"
+          },
+          {
+            "robot": "R1",
+            "skill": "move_to"
+          },
+          {
+            "robot": "R3",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R3",
+            "skill": "place_cart"
+          },
+          {
+            "robot": "R3",
+            "skill": "move_to"
+          },
+          {
+            "robot": "R4",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R4",
+            "skill": "place_cart"
+          },
+          {
+            "robot": "R4",
+            "skill": "move_to"
+          },
+          {
+            "robot": "R2",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R2",
+            "skill": "place_cart"
+          },
+          {
+            "robot": "R2",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R2",
+            "skill": "place_cart"
+          },
+          {
+            "robot": "R2",
+            "skill": "move_to"
+          },
+          {
+            "robot": "R4",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R4",
+            "skill": "place_cart"
+          },
+          {
+            "robot": "R4",
+            "skill": "move_to"
+          },
+          {
+            "robot": "R3",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R3",
+            "skill": "place_cart"
+          },
+          {
+            "robot": "R3",
+            "skill": "move_to"
+          },
+          {
+            "robot": "R1",
+            "skill": "acquire_cart"
+          },
+          {
+            "robot": "R1",
+            "skill": "place_cart"
+          }
+        ],
+        "reserved": false,
+        "cards": [
+          "R1 Pro · 01空闲源区取放 · 源区未持车本轮完成 5 项 · 等待派发",
+          "R1 Pro · 02空闲工位转运 · Pro 02 等待未持车本轮完成 5 项 · 等待派发",
+          "R1 Lite · 01空闲首段运输 · Lite 01 等待未持车本轮完成 6 项 · 等待派发",
+          "R1 Lite · 02空闲次段运输 · Lite 02 等待未持车本轮完成 6 项 · 等待派发"
+        ]
+      }
+    },
+    {
+      "name": "automatic scenario reset retains all four active participants"
+    },
+    {
+      "name": "interpolated motion + attached cart + reservation name",
+      "detail": {
+        "x": 118.27915775966648,
+        "to": 258.4,
+        "carts": 1,
+        "held": true,
+        "reservation": "交接 APro 01 预约"
+      }
+    },
+    {
+      "name": "new event highlight"
+    },
+    {
+      "name": "pickup receipt never hides the cart between layers"
+    },
+    {
+      "name": "failed start is not retried by polls"
+    },
+    {
+      "name": "offline/UNKNOWN never starts"
+    },
+    {
+      "name": "reset failure stops carousel sequence"
+    },
+    {
+      "name": "planner error blocks automatic restart"
+    },
+    {
+      "name": "unchecking auto during reset prevents start"
+    },
+    {
+      "name": "iframe key1 → shell key2 with browser keyboard events"
+    },
+    {
+      "name": "replay resets on re-entry",
+      "detail": {
+        "before": "2.3 s / 92.6 s",
+        "after": "0.1 s / 92.6 s"
+      }
+    },
+    {
+      "name": "automatic carousel restarts replay"
+    },
+    {
+      "name": "embedded replay fits",
+      "detail": {
+        "width": 1890,
+        "height": 942,
+        "overflow": false,
+        "footer": 932,
+        "metric": "目标/反馈偏差0.001双臂 MAE · rad"
+      }
+    },
+    {
+      "name": "recording 1 arm MAE matches recorded targets and 32-step label",
+      "detail": {
+        "at": 40,
+        "expected": "0.006",
+        "value": "0.006",
+        "steps": 8,
+        "prediction": "预测（本段 32 步）",
+        "note": "当前段已下发 8 步、双臂 112 个关节样本的 |目标−同条发送前采样反馈| 均值（rad）。不含夹爪、底盘、躯干；未作时序对齐，不代表跟踪精度。"
+      }
+    },
+    {
+      "name": "recording 1 every timeline RTT classification matches median times 1.5",
+      "detail": {
+        "segments": 43,
+        "limit": 1.02135,
+        "outliers": []
+      }
+    },
+    {
+      "name": "recording 2 arm MAE matches recorded targets and 32-step label",
+      "detail": {
+        "at": 70,
+        "expected": "0.017",
+        "value": "0.017",
+        "steps": 8,
+        "prediction": "预测（本段 32 步）",
+        "note": "当前段已下发 8 步、双臂 112 个关节样本的 |目标−同条发送前采样反馈| 均值（rad）。不含夹爪、底盘、躯干；未作时序对齐，不代表跟踪精度。"
+      }
+    },
+    {
+      "name": "recording 2 every timeline RTT classification matches median times 1.5",
+      "detail": {
+        "segments": 30,
+        "limit": 1.1541000000000001,
+        "outliers": [
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ]
+      }
+    },
+    {
+      "name": "direct #replay loads iframe"
+    },
+    {
+      "name": "no browser JavaScript exceptions"
+    }
+  ]
+}

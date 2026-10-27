@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="zh" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模型推理回放</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b1016; --surface:#121a24; --surface-2:#182331; --line:#263445; --grid:#1d2937;
+  --text:#eef3f8; --text-2:#aab8c8; --muted:#7c8a9b;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s7:#9085e9; --bad:#e66767;
+  --s1-soft:rgba(57,135,229,.18); --s2-soft:rgba(217,89,38,.16);
+  font-family:"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);overflow:hidden}
+body{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:56px minmax(0,1fr) 132px;gap:10px;padding:10px 14px}
+header{display:flex;align-items:center;gap:18px;padding:0 6px;min-width:0}
+header .heading{min-width:220px;max-width:34%;flex:1}
+header h1{font-size:24px;margin:0;font-weight:650;letter-spacing:.2px;white-space:nowrap}
+header .sub{color:var(--text-2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.embedded body{padding:10px;grid-template-rows:56px minmax(0,1fr) 120px}
+.chips{display:flex;gap:8px;flex-wrap:nowrap;margin-left:auto;overflow:hidden}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--text-2);white-space:nowrap;line-height:1.2}
+.chip b{display:block;color:var(--text);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.chip.ok b{color:var(--s3)} .chip.warn b{color:var(--s4)}
+main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-rows:minmax(0,.88fr) minmax(0,1.12fr);gap:10px;min-height:0;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:0;display:flex;flex-direction:column;position:relative}
+.card h2{font-size:14px;margin:0 0 6px;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:10px}
+.card h2 .right{margin-left:auto;font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+#cams{grid-column:1;grid-row:1}
+.camrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:1;min-height:0}
+.cam{position:relative;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line);min-height:0}
+.cam img{width:100%;height:100%;object-fit:contain;display:block}
+.cam img:not([src]){visibility:hidden}
+.cam .tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);padding:3px 8px;border-radius:6px;font-size:12px;color:var(--text)}
+.cam .age{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.55);padding:3px 8px;border-radius:6px;font-size:11px;color:var(--text-2);font-variant-numeric:tabular-nums}
+#think{display:none;margin-left:6px;align-items:center;gap:8px;background:var(--s2-soft);border:1px solid var(--s2);color:var(--text);padding:4px 10px;border-radius:999px;font-size:12px}
+#think.on{display:flex}
+#think i{width:8px;height:8px;border-radius:50%;background:var(--s2);animation:pulse .9s infinite}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+#joints{grid-column:1;grid-row:2}
+.tabs{display:flex;gap:4px}
+.tab{background:transparent;border:1px solid var(--line);color:var(--text-2);border-radius:6px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer}
+.tab.on{background:var(--surface-2);color:var(--text);border-color:#3a4c62}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-left:14px}
+.legend span::before{content:"";display:inline-block;width:18px;height:0;border-top:2px solid var(--c);margin-right:6px;vertical-align:middle}
+.legend .dash::before{border-top-style:dashed}
+.legend .dash::before{border-top-width:3px;width:24px}
+.joint-heading{flex-wrap:wrap}
+.tracking{margin-left:auto;font-size:12px;font-weight:400;color:var(--text-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tracking b{font-size:17px;color:var(--text);font-weight:600;margin-left:6px}
+.tracking small{font-size:11px;color:var(--muted);margin-left:5px}
+.chart-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:6px;min-height:20px}
+.chart-meta .legend{margin-left:0}
+#jointnote{margin-left:auto;font-size:12px;color:var(--muted)}
+canvas{display:block;width:100%;height:100%}
+.cv{flex:1;min-height:0;position:relative}
+#latency{grid-column:2;grid-row:1}
+#latency .cv{height:150px;flex:none}
+#side{grid-column:2;grid-row:2;gap:10px;display:flex;flex-direction:column}
+#grip{flex:none}
+.gbar{display:grid;grid-template-columns:48px 1fr 64px;align-items:center;gap:10px;font-size:12px;color:var(--text-2);margin:6px 0}
+.gbar .track{height:14px;background:var(--surface-2);border-radius:4px;position:relative;overflow:hidden}
+.gbar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--s1);border-radius:4px;transition:width .12s linear}
+.gbar .tgt{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--s2)}
+.gbar .val{text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.gbar .state{font-size:11px;color:var(--muted);margin-left:6px}
+#feed{flex:1;min-height:0}
+#feedlist{flex:1;min-height:0;overflow:hidden;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;justify-content:flex-end}
+#feedlist div{display:flex;gap:10px;padding:2px 0;border-bottom:1px solid var(--grid);color:var(--text-2);flex-shrink:0}
+#feedlist div:last-child{color:var(--text)}
+#feedlist .t{color:var(--muted);flex:none;width:52px}
+#feedlist .ev{color:var(--s3);font-weight:600}
+#feedlist .ev.release{color:var(--s4)} #feedlist .ev.clamped{color:var(--bad)}
+footer{display:grid;grid-template-rows:1fr 34px;gap:6px}
+#timeline{position:relative;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ctrl{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--text-2);padding:0 4px}
+.ctrl button,.ctrl select{font:inherit;background:var(--surface-2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px 12px;cursor:pointer}
+#play{width:74px}
+.ctrl .time{font-variant-numeric:tabular-nums;color:var(--text);font-size:15px;min-width:120px}
+.ctrl label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.ctrl .hint{margin-left:auto;color:var(--muted);font-size:12px}
+#tip{position:fixed;pointer-events:none;background:#0b1016;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--text-2);display:none;z-index:9;white-space:nowrap}
+#tip b{color:var(--text);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body data-palette="#3987e5,#d95926,#199e70,#c98500">
+<header>
+  <div class="heading"><h1 id="title"></h1><div class="sub" id="subtitle"></div></div>
+  <div class="chips" id="chips"></div>
+</header>
+<main>
+  <section class="card" id="cams">
+    <h2>模型看到的画面 <div id="think"><i></i><span id="thinktext">推理中</span></div><span class="right" id="camnote"></span></h2>
+    <div class="camrow" id="camrow"></div>
+  </section>
+  <section class="card" id="joints">
+    <h2 class="joint-heading">动作：模型预测与采样反馈
+      <div class="tabs" id="tabs"></div>
+      <span class="tracking" id="tracking" title="当前段双臂 14 个关节的目标与同条发送前采样反馈绝对差均值；不含夹爪、底盘和躯干。未作时序对齐，不代表跟踪精度。">目标/反馈偏差<b id="tracking-value">—</b><small>双臂 MAE · rad</small></span></h2>
+    <div class="chart-meta"><div class="legend"><span class="dash" style="--c:var(--s2)" id="prediction-label">预测（本段 32 步）</span><span style="--c:var(--s2)">已下发目标</span><span style="--c:var(--s1)">发送前反馈</span></div><span id="jointnote"></span></div>
+    <div class="cv"><canvas id="jc"></canvas></div>
+  </section>
+  <section class="card" id="latency">
+    <h2>每段请求时延 <div class="legend"><span style="--c:var(--s1)">服务器排队+计算</span><span style="--c:var(--s3)">网络+隧道</span></div><span class="right" id="latnote"></span></h2>
+    <div class="cv"><canvas id="lc"></canvas></div>
+  </section>
+  <div id="side">
+    <section class="card" id="grip">
+      <h2>夹爪 <span class="right">蓝=指令前反馈 · 橙线=目标</span></h2>
+      <div id="grip-note" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:6px">反馈在本步指令前采集，目标与反馈不一定重合。</div>
+      <div class="gbar"><span>左爪</span><div class="track"><div class="fill" id="gl"></div><div class="tgt" id="gtl"></div></div><span class="val" id="gvl"></span></div>
+      <div class="gbar"><span>右爪</span><div class="track"><div class="fill" id="gr"></div><div class="tgt" id="gtr"></div></div><span class="val" id="gvr"></span></div>
+    </section>
+    <section class="card" id="feed">
+      <h2>运行记录 <span class="right" id="feednote"></span></h2>
+      <div id="feedlist"></div>
+    </section>
+  </div>
+</main>
+<footer>
+  <div id="timeline"><canvas id="tc"></canvas></div>
+  <div class="ctrl">
+    <button id="play">暂停</button>
+    <span class="time" id="clock">0.0 s</span>
+    <span>速度</span><select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+    <label><input type="checkbox" id="loop" checked>循环</label>
+    <span id="seg"></span>
+    <span class="hint">空格 播放/暂停 · ←→ 前后 2 s · 点时间轴跳转 · 1 车队 / 2 回放 / 3 主屏</span>
+  </div>
+</footer>
+<div id="tip"></div>
+<script>
+const DATA = /*__DATA__*/null;
+(function(){
+const M = DATA.meta, C = DATA.chunks, T = DATA.targets, EV = DATA.events, LOG = DATA.console;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const COL = {s1:css('--s1'), s2:css('--s2'), s3:css('--s3'), s4:css('--s4'), bad:css('--bad'), grid:css('--grid'), line:css('--line'), text:css('--text'), text2:css('--text-2'), muted:css('--muted'), surface:css('--surface'), surface2:css('--surface-2')};
+const $ = id => document.getElementById(id);
+const fmt = (v, d=2) => (v==null||isNaN(v)) ? '–' : Number(v).toFixed(d);
+document.documentElement.classList.toggle('embedded', window.parent !== window);
+
+// ---------- 派生数据 ----------
+const tEnd = M.t_end;
+const sortedRtt = C.map(c => c.rtt).filter(Number.isFinite).sort((a, b) => a - b);
+const midRtt = Math.floor(sortedRtt.length / 2);
+const medianRtt = sortedRtt.length ? (sortedRtt.length % 2 ? sortedRtt[midRtt] : (sortedRtt[midRtt - 1] + sortedRtt[midRtt]) / 2) : null;
+const rttLimit = medianRtt == null ? null : medianRtt * 1.5;
+C.forEach(c => { c.rttOutlier = Number.isFinite(c.rtt) && rttLimit != null && c.rtt > rttLimit; });
+// Arms only: feedback was sampled before sending this target; not time-aligned tracking accuracy.
+function armTrackingError(chunkId, atTime) {
+  let sum = 0, count = 0, steps = 0;
+  for (const row of T) {
+    if (row[1] !== chunkId || row[0] > atTime) continue;
+    let included = false;
+    for (let d = 0; d < 14; d++) {
+      if (!Number.isFinite(row[3][d]) || !Number.isFinite(row[4][d])) continue;
+      sum += Math.abs(row[3][d] - row[4][d]); count++; included = true;
+    }
+    if (included) steps++;
+  }
+  return {mae: count ? sum / count : null, steps, count};
+}
+C.forEach(c => { const tg = T.find(x => x[1] === c.i); c.t_first = tg ? tg[0] : c.t_resp; });
+C.forEach((c, k) => { c.t_next = (C[k+1] ? C[k+1].t_cap : tEnd); });
+const grasp = EV.find(e => e.kind === 'grasp_detected'), release = EV.find(e => e.kind === 'release_detected');
+const yr = {}; // 每维 y 范围
+for (let d = 0; d < 23; d++) {
+  let lo = Infinity, hi = -Infinity;
+  for (const tg of T) { lo = Math.min(lo, tg[3][d], tg[4][d]); hi = Math.max(hi, tg[3][d], tg[4][d]); }
+  for (const c of C) for (const row of c.action) { lo = Math.min(lo, row[d]); hi = Math.max(hi, row[d]); }
+  if (!isFinite(lo)) { lo = -1; hi = 1; }
+  const pad = Math.max((hi - lo) * 0.15, 0.02); yr[d] = [lo - pad, hi + pad];
+}
+const chunkAt = t => { let r = null; for (const c of C) { if (c.t_resp <= t) r = c; else break; } return r; };
+const lastTargetAt = t => { let lo = 0, hi = T.length - 1, r = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (T[m][0] <= t) { r = m; lo = m + 1; } else hi = m - 1; } return r; };
+
+// ---------- 头部 ----------
+$('title').textContent = M.title; $('subtitle').textContent = M.subtitle + ' · 任务结果待核验 · 离线真机日志 · ' + (M.started_utc || '').slice(0, 19).replace('T', ' ') + ' UTC · ' + M.run_dir;
+$('subtitle').title = $('subtitle').textContent;
+const endZh = r => r === 'released_after_grasp' ? '张开指令后结束 · 结果待核验' : r === 'model_time_used' ? '模型时间用完 · 结果待核验' : /^rejected:/.test(r) ? '安全拒绝：' + r.slice(9).trim() : /operator stop/.test(r) ? '操作员停止 · 结果待核验' : '记录结束 · 结果待核验';
+const chips = [
+  ['推理段数', M.chunks, ''], ['下发步数', M.steps, ''], ['模型控制', fmt(M.model_time_s, 1) + ' s', ''],
+  ['往返中位', fmt(medianRtt, 2) + ' s', ''],
+  ['闭合条件触发', grasp ? fmt(grasp.t - C[0].t_first, 1) + ' s' : '—', ''],
+  ['张开指令', release ? fmt(release.t - C[0].t_first, 1) + ' s' : '—', ''],
+  ['记录结束', (r => r.length > 22 ? r.slice(0, 22) + '…' : r)(endZh(M.end_reason)), 'warn'],
+  ['模型', (M.model_id || '').replace(/^b041_/, '').slice(0, 28), ''],
+];
+$('chips').innerHTML = chips.map(([k, v, cls]) => `<div class="chip ${cls}">${k}<b>${v}</b></div>`).join('');
+
+// ---------- 相机 ----------
+$('camrow').innerHTML = DATA.cams.map(c => `<div class="cam"><img id="img_${c.key}" alt="${c.label}"><span class="tag">${c.label}</span><span class="age" id="age_${c.key}"></span></div>`).join('');
+let shownChunk = -1;
+function drawCams(t) {
+  const c = chunkAt(t);
+  if (!c && shownChunk !== -2) {
+    shownChunk = -2;
+    for (const cam of DATA.cams) { $('img_' + cam.key).removeAttribute('src'); $('age_' + cam.key).textContent = ''; }
+    $('camnote').textContent = '等待第一段观测';
+  }
+  if (c && c.i !== shownChunk) {
+    shownChunk = c.i;
+    for (const cam of DATA.cams) {
+      const img = $('img_' + cam.key), src = c.img && c.img[cam.key];
+      if (src) img.src = src; else img.removeAttribute('src');
+      $('age_' + cam.key).textContent = c.ages_ms && c.ages_ms[cam.key] != null ? '采集延迟 ' + c.ages_ms[cam.key] + ' ms' : '';
+    }
+    $('camnote').textContent = `第 ${c.i + 1}/${C.length} 段 · 观测于 ${fmt(c.t_cap, 1)} s · 三路 224×224`;
+  }
+  const nxt = C.find(x => x.t_cap <= t && t < x.t_resp);
+  const th = $('think'); th.classList.toggle('on', !!nxt);
+  if (nxt) $('thinktext').textContent = `推理中 · 第 ${nxt.i + 1} 段 · ${fmt(t - nxt.t_cap, 2)} s`;
+}
+
+// ---------- 画布工具 ----------
+function setup(cv) {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return [g, r.width, r.height];
+}
+
+// ---------- 关节小多图 ----------
+let group = DATA.groups[0], hoverX = null;
+$('tabs').innerHTML = DATA.groups.map(g => `<button class="tab ${g === group ? 'on' : ''}" data-k="${g.key}">${g.label}</button>`).join('');
+$('tabs').onclick = e => { const b = e.target.closest('.tab'); if (!b) return; group = DATA.groups.find(g => g.key === b.dataset.k); [...$('tabs').children].forEach(x => x.classList.toggle('on', x === b)); render(); };
+const WIN_BACK = 6, WIN_FWD = 2.6;
+function drawJoints(t) {
+  const [g, W, H] = setup($('jc'));
+  g.clearRect(0, 0, W, H);
+  const L = 60, R = 84, top = 6, rows = group.idx.length, rh = (H - top - 18) / rows;
+  const t0 = t - WIN_BACK, t1 = t + WIN_FWD, x = tt => L + (tt - t0) / (t1 - t0) * (W - L - R);
+  const cur = chunkAt(t);
+  const i0 = Math.max(0, lastTargetAt(t0) - 1), i1 = lastTargetAt(t);
+  // 时间网格
+  g.strokeStyle = COL.grid; g.lineWidth = 1; g.font = '13px system-ui'; g.fillStyle = COL.muted; g.textAlign = 'center';
+  for (let s = Math.ceil(t0); s <= t1; s++) { const xx = x(s); g.beginPath(); g.moveTo(xx, top); g.lineTo(xx, H - 18); g.stroke(); g.fillText(s + ' s', xx, H - 5); }
+  group.idx.forEach((d, r) => {
+    const y0 = top + r * rh, y1 = y0 + rh - 6, [lo, hi] = yr[d], y = v => y1 - (v - lo) / (hi - lo) * (y1 - y0);
+    g.fillStyle = COL.text2; g.font = '14px system-ui'; g.textAlign = 'left'; g.fillText(group.names[r], 6, y0 + 13);
+    g.strokeStyle = COL.line; g.beginPath(); g.moveTo(L, y1); g.lineTo(W - R, y1); g.stroke();
+    g.save(); g.beginPath(); g.rect(L, y0, W - L - R, y1 - y0); g.clip();
+    // 当前段预测范围；已执行步数区间淡橙底。
+    if (cur && cur.action.length) {
+      const ts = cur.t_first, dt = M.step_dt;
+      g.fillStyle = css('--s2-soft'); g.fillRect(x(ts), y0, Math.max(1, x(ts + M.exec_steps * dt) - x(ts)), y1 - y0);
+    }
+    // 已下发目标（橙实线细）与实际反馈（蓝实线）
+    g.lineWidth = 1.2; g.strokeStyle = COL.s2; g.beginPath();
+    for (let i = i0; i <= i1; i++) { const xx = x(T[i][0]), yy = y(T[i][3][d]); (i === i0 || T[i][1] !== T[i-1][1]) ? g.moveTo(xx, yy) : g.lineTo(xx, yy); }
+    g.stroke();
+    g.lineWidth = 2.2; g.strokeStyle = COL.s1; g.beginPath();
+    for (let i = i0; i <= i1; i++) { const xx = x(T[i][0]), yy = y(T[i][4][d]); i === i0 ? g.moveTo(xx, yy) : g.lineTo(xx, yy); }
+    g.stroke();
+    // Render the complete current prediction last so feedback cannot hide its dashes.
+    if (cur && cur.action.length) {
+      g.setLineDash([9, 5]); g.lineCap = 'round'; g.beginPath();
+      cur.action.forEach((row, k) => { const xx = x(cur.t_first + k * M.step_dt), yy = y(row[d]); k ? g.lineTo(xx, yy) : g.moveTo(xx, yy); });
+      g.strokeStyle = COL.surface; g.lineWidth = 5.5; g.stroke();
+      g.strokeStyle = COL.s2; g.lineWidth = 3; g.stroke(); g.setLineDash([]);
+      const k = cur.action.length - 1;
+      g.fillStyle = COL.s2; g.beginPath(); g.arc(x(cur.t_first + k * M.step_dt), y(cur.action[k][d]), 3, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+    // 当前值
+    if (i1 >= 0) {
+      const fb = T[i1][4][d], tg = T[i1][3][d];
+      g.fillStyle = COL.s1; g.beginPath(); g.arc(x(T[i1][0]), y(fb), 4, 0, 7); g.fill();
+      g.fillStyle = COL.text; g.font = '14px system-ui'; g.textAlign = 'right'; g.fillText(fmt(fb, 3), W - 6, y0 + 15);
+      g.fillStyle = COL.muted; g.font = '12px system-ui'; g.fillText('差值 ' + fmt(Math.abs(tg - fb), 3), W - 6, y0 + 30);
+    }
+  });
+  // 播放头
+  g.strokeStyle = COL.text2; g.lineWidth = 1; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x(t), top); g.lineTo(x(t), H - 18); g.stroke(); g.setLineDash([]);
+  // 悬停十字线
+  if (hoverX != null) {
+    const th = t0 + (hoverX - L) / (W - L - R) * (t1 - t0), i = lastTargetAt(th);
+    if (i >= 0 && th <= t) {
+      g.strokeStyle = COL.s4; g.beginPath(); g.moveTo(hoverX, top); g.lineTo(hoverX, H - 18); g.stroke();
+      const tip = $('tip'); tip.style.display = 'block';
+      tip.innerHTML = `<b>${fmt(T[i][0], 2)} s</b> · 第 ${T[i][1] + 1} 段 第 ${T[i][2] + 1} 步 · 未作时序对齐<br>` + group.idx.map((d, r) => `${group.names[r]}: 目标 <b>${fmt(T[i][3][d], 3)}</b> 发送前反馈 <b>${fmt(T[i][4][d], 3)}</b>`).join('<br>');
+    } else $('tip').style.display = 'none';
+  }
+  const units = group.key === 'base' ? 'vx/vy m/s · wz rad/s' : group.key === 'gripper' ? '开度（设备值）' : group.key === 'torso' ? 'action23 原始单位' : 'rad';
+  $('jointnote').textContent = cur ? `第 ${cur.i + 1} 段 · 执行前 ${M.exec_steps} 步再观测 · ${units}` : '等待第一段';
+  $('prediction-label').textContent = `预测（本段 ${cur ? cur.action.length : M.horizon} 步）`;
+  const error = armTrackingError(cur ? cur.i : null, t);
+  $('tracking-value').textContent = error.mae == null ? '—' : fmt(error.mae, 3);
+  $('tracking').dataset.steps = error.steps;
+  $('tracking').title = `当前段已下发 ${error.steps} 步、双臂 ${error.count} 个关节样本的 |目标−同条发送前采样反馈| 均值（rad）。不含夹爪、底盘、躯干；未作时序对齐，不代表跟踪精度。`;
+}
+$('jc').onmousemove = e => { const r = e.target.getBoundingClientRect(); hoverX = e.clientX - r.left; const tip = $('tip'); tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; if (!playing) render(); };
+$('jc').onmouseleave = () => { hoverX = null; $('tip').style.display = 'none'; if (!playing) render(); };
+
+// ---------- 时延柱 ----------
+let latHover = null;
+function drawLatency(t) {
+  const [g, W, H] = setup($('lc')); g.clearRect(0, 0, W, H);
+  const L = 36, B = 18, n = C.length, maxv = Math.max(0.5, ...C.map(c => c.rtt)) * 1.08;
+  const bw = (W - L - 6) / n, y = v => H - B - v / maxv * (H - B - 8);
+  g.font = '12px system-ui'; g.fillStyle = COL.muted; g.textAlign = 'right'; g.strokeStyle = COL.grid;
+  for (const v of [0, 0.5, 1.0, 1.5, 2.0]) if (v <= maxv) { g.beginPath(); g.moveTo(L, y(v)); g.lineTo(W - 6, y(v)); g.stroke(); g.fillText(v.toFixed(1), L - 4, y(v) + 3); }
+  const cur = chunkAt(t);
+  C.forEach((c, k) => {
+    const x0 = L + k * bw + 1, w = Math.max(2, bw - 2), future = c.t_resp > t;
+    g.globalAlpha = future ? 0.25 : 1;
+    g.fillStyle = COL.s1; g.fillRect(x0, y(c.server), w, y(0) - y(c.server));
+    g.fillStyle = COL.s3; g.fillRect(x0, y(c.rtt), w, Math.max(0, y(c.server) - y(c.rtt) - 1));
+    g.globalAlpha = 1;
+    if (cur && c.i === cur.i) { g.strokeStyle = COL.text; g.lineWidth = 1.5; g.strokeRect(x0 - .5, y(c.rtt) - .5, w + 1, y(0) - y(c.rtt) + 1); }
+    if (latHover != null && latHover >= x0 - 1 && latHover < x0 + w + 1) {
+      const tip = $('tip'); tip.style.display = 'block';
+      tip.innerHTML = `第 ${c.i + 1} 段<br>往返 <b>${fmt(c.rtt, 3)} s</b><br>服务器 <b>${fmt(c.server, 3)} s</b> · 网络 <b>${fmt(c.rtt - c.server, 3)} s</b><br>观测时钟偏差 <b>${c.skew_ms} ms</b><br>${c.rttOutlier ? '<b>RTT 异常</b>' : 'RTT 正常'} · 阈值 &gt; ${fmt(rttLimit, 3)} s（中位数 × 1.5）`;
+    }
+  });
+  g.fillStyle = COL.muted; g.textAlign = 'center'; g.fillText('段序号 →', W / 2, H - 4); g.textAlign = 'left'; g.fillText('秒', 2, 12);
+  $('latnote').textContent = cur ? `第 ${cur.i + 1} 段 往返 ${fmt(cur.rtt, 2)} s${cur.rttOutlier ? ' · RTT 异常' : ''}` : '等待第一段';
+  $('latnote').style.color = cur && cur.rttOutlier ? COL.bad : '';
+}
+$('lc').onmousemove = e => { const r = e.target.getBoundingClientRect(); latHover = e.clientX - r.left; const tip = $('tip'); tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; if (!playing) render(); };
+$('lc').onmouseleave = () => { latHover = null; $('tip').style.display = 'none'; if (!playing) render(); };
+
+// ---------- 夹爪 ----------
+function drawGrip(t) {
+  const release = EV.find(e => e.kind === 'release_detected' && e.t <= t);
+  const missing = [];
+  if (release && !C.some(c => c.t_cap > release.t)) missing.push('画面');
+  if (release && !T.some(row => row[0] > release.t)) missing.push('反馈');
+  $('grip-note').textContent = missing.length ? '张开指令已记录；缺少张开后的' + missing.join('和') + '，无法确认放下完成。' : '反馈在本步指令前采集，目标与反馈不一定重合。';
+  const G = [[14, 'gl', 'gtl', 'gvl'], [15, 'gr', 'gtr', 'gvr']];
+  const i = lastTargetAt(t);
+  if (i < 0) {
+    for (const [, f, tg, v] of G) { $(f).style.width = '0%'; $(tg).style.left = '0%'; $(v).textContent = '—'; }
+    return;
+  }
+  for (const [d, f, tg, v] of G) {
+    const fb = T[i][4][d], tv = T[i][3][d], hi = Math.max(100, yr[d][1]);
+    $(f).style.width = Math.max(0, Math.min(100, fb / hi * 100)) + '%';
+    $(tg).style.left = Math.max(0, Math.min(100, tv / hi * 100)) + '%';
+    $(v).innerHTML = fmt(fb, 0) + '<span class="state">' + (fb < 30 ? '低开度' : '高开度') + '</span>';
+  }
+}
+
+// ---------- 运行记录 ----------
+const zh = text => {
+  let m;
+  if ((m = text.match(/^RUN: model time (\d+)s \(wall cap (\d+)s\), (\d+) steps per chunk, base (\w+), speed x([\d.]+)/))) return `开始模型控制：模型时间上限 ${m[1]} s（墙钟 ${m[2]} s），每段执行 ${m[3]} 步，底盘${m[4] === 'locked' ? '锁定' : m[4]}，速度 ×${m[5]}`;
+  if ((m = text.match(/^chunk (\d+): rtt ([\d.]+)s \(server ([\d.]+)s\) executed (\d+); max move arm ([\d.]+) torso ([\d.]+); grippers L(\d+) R(\d+); model time ([\d.]+)\/(\d+)s/))) return `第 ${+m[1] + 1} 段：往返 ${m[2]} s（服务器 ${m[3]} s），执行 ${m[4]} 步；最大移动 臂 ${m[5]} 躯干 ${m[6]} rad；夹爪 左 ${m[7]} 右 ${m[8]}；模型时间 ${m[9]}/${m[10]} s`;
+  if ((m = text.match(/^grasp detected/i))) return '右夹爪闭合条件触发（仅阈值事件，不证明抓持成功）';
+  if ((m = text.match(/^RELEASE after grasp \(grasp step (\d+), release step (\d+)\): ending the run/i))) return `闭合条件后收到张开指令（日志步 ${m[1]} → ${m[2]}）：结束记录，任务结果待核验`;
+  if ((m = text.match(/^RUN_END \S+: (\d+) chunks, (\d+) steps, model time ([\d.]+)s, wall ([\d.]+)s, request failures (\d+)/))) return `记录结束：${m[1]} 段 / ${m[2]} 步，模型时间 ${m[3]} s，墙钟 ${m[4]} s，请求失败 ${m[5]} 次；任务结果待核验`;
+  return text;
+};
+const feedItems = [...LOG.filter(([t, text]) => !/clamped onto the envelope/.test(text)).map(([t, text]) => ({t, text: zh(text), cls: ''})), ...EV.map(e => ({t: e.t, cls: e.kind.replace('_detected', ''), text: e.kind === 'grasp_detected' ? `右夹爪闭合条件触发（开度 ${fmt(e.detail, 1)}；不证明抓持成功）` : e.kind === 'release_detected' ? '收到右夹爪张开指令（未等待反馈；任务结果待核验）' : e.kind === 'clamped' ? '安全裁剪：' + Object.entries(e.detail || {}).map(([k, v]) => `${k} ${v}`).join('，') : e.kind + ' ' + (e.detail || '')}))].sort((a, b) => a.t - b.t);
+let feedN = -1;
+function drawFeed(t) {
+  let n = 0; while (n < feedItems.length && feedItems[n].t <= t) n++;
+  if (n === feedN) return; feedN = n;
+  const show = feedItems.slice(Math.max(0, n - 9), n);
+  $('feedlist').innerHTML = show.map(it => `<div><span class="t">${fmt(it.t, 1)} s</span><span class="${it.cls ? 'ev ' + it.cls : ''}">${it.text.replace(/</g, '&lt;')}</span></div>`).join('');
+  const list = $('feedlist');
+  while (list.children.length > 1 && [...list.children].reduce((h, row) => h + row.getBoundingClientRect().height, 0) > list.clientHeight) list.firstElementChild.remove();
+  $('feednote').textContent = `${n}/${feedItems.length} 条`;
+}
+
+// ---------- 时间轴 ----------
+let timelineHover = null;
+function drawTimeline(t) {
+  const [g, W, H] = setup($('tc')); g.clearRect(0, 0, W, H);
+  const L = 10, R = 10, x = tt => L + tt / tEnd * (W - L - R), top = 22, bot = H - 20;
+  const maxr = Math.max(...C.map(c => c.rtt), 0.1);
+  C.forEach(c => {
+    const x0 = x(c.t_cap), x1 = x(c.t_next), h = (bot - top) * (0.35 + 0.65 * c.rtt / maxr);
+    g.fillStyle = c.t_resp <= t ? css('--s1-soft') : COL.surface2; g.fillRect(x0, bot - h, Math.max(1, x1 - x0 - 1), h);
+    g.fillStyle = c.t_resp <= t ? COL.s1 : COL.line; g.fillRect(x0, bot - h, Math.max(1, x(c.t_resp) - x0), h);
+    if (c.rttOutlier) {
+      g.strokeStyle = COL.bad; g.lineWidth = 1.5; g.strokeRect(x0 + .5, bot - h + .5, Math.max(1, x1 - x0 - 2), h - 1);
+      const center = (x0 + x1 - 1) / 2;
+      g.fillStyle = COL.bad; g.beginPath(); g.moveTo(center - 5, bot - 12); g.lineTo(center + 5, bot - 12); g.lineTo(center, bot - 5); g.fill();
+    }
+  });
+  g.font = '13px system-ui'; g.textAlign = 'center';
+  for (let s = 0; s <= tEnd; s += 5) { g.fillStyle = COL.muted; g.fillText(s + 's', x(s), H - 6); g.fillStyle = COL.grid; g.fillRect(x(s), top, 1, bot - top); }
+  const mark = (tt, col, label, up) => { g.fillStyle = col; g.fillRect(x(tt) - 1, top - 4, 2, bot - top + 4); g.font = '600 13px system-ui'; g.textAlign = 'center'; const half = g.measureText(label).width / 2; g.fillText(label, Math.max(half + 4, Math.min(W - half - 4, x(tt))), up ? 12 : bot + 12); };
+  for (const e of EV) { if (e.kind === 'grasp_detected') mark(e.t, COL.s3, '闭合条件', true); else if (e.kind === 'release_detected') mark(e.t, COL.s4, '张开指令', true); else if (e.kind === 'clamped') { g.fillStyle = COL.bad; g.fillRect(x(e.t) - 1, top - 4, 2, 6); } }
+  g.fillStyle = COL.muted; g.textAlign = 'left'; g.font = '12px system-ui'; g.fillText(`每块 = 一次请求 · 高度 = RTT · 红框▼ = RTT > ${fmt(rttLimit, 3)} s（中位数 × 1.5）· 红短线 = 安全裁剪`, L, 12);
+  g.fillStyle = COL.text; g.fillRect(x(t) - 1, top - 6, 2, bot - top + 10);
+  g.beginPath(); g.moveTo(x(t) - 6, top - 6); g.lineTo(x(t) + 6, top - 6); g.lineTo(x(t), top); g.fill();
+  if (timelineHover != null) {
+    const at = (timelineHover - L) / (W - L - R) * tEnd;
+    let c = null;
+    for (const item of C) if (item.t_cap <= at && at < item.t_next) c = item;
+    const tip = $('tip'); tip.style.display = c ? 'block' : 'none';
+    if (c) tip.innerHTML = `第 ${c.i + 1} 段 · <b>${c.rttOutlier ? 'RTT 异常' : 'RTT 正常'}</b><br>往返 <b>${fmt(c.rtt, 3)} s</b> · 中位数 ${fmt(medianRtt, 3)} s<br>异常条件：RTT &gt; ${fmt(rttLimit, 3)} s（中位数 × 1.5）`;
+  }
+}
+const seekFrom = e => { const r = $('tc').getBoundingClientRect(); setT(Math.max(0, Math.min(tEnd, (e.clientX - r.left - 10) / (r.width - 20) * tEnd))); };
+let dragging = false;
+$('timeline').onmousedown = e => { dragging = true; seekFrom(e); };
+window.addEventListener('mousemove', e => { if (dragging) seekFrom(e); });
+window.addEventListener('mouseup', () => dragging = false);
+$('timeline').onmousemove = e => { const r = $('tc').getBoundingClientRect(); timelineHover = e.clientX - r.left; const tip = $('tip'); tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 350) + 'px'; tip.style.top = Math.max(8, e.clientY - 90) + 'px'; if (!playing) render(); };
+$('timeline').onmouseleave = () => { timelineHover = null; $('tip').style.display = 'none'; };
+
+// ---------- 播放 ----------
+let t = 0, playing = true, last = null, endHold = 0;
+function setT(v) { t = v; endHold = 0; shownChunk = -1; feedN = -1; render(); }
+function render() { drawCams(t); drawJoints(t); drawLatency(t); drawGrip(t); drawFeed(t); drawTimeline(t); $('clock').textContent = fmt(t, 1) + ' s / ' + fmt(tEnd, 1) + ' s'; const c = chunkAt(t); $('seg').textContent = c ? `第 ${c.i + 1} 段` : '等待第一段'; }
+function frame(now) {
+  if (last != null && playing) {
+    const dt = (now - last) / 1000 * parseFloat($('speed').value);
+    if (t >= tEnd) { endHold += dt; if ($('loop').checked && endHold > 2.5) { endHold = 0; setT(0); } }
+    else { t = Math.min(tEnd, t + dt); render(); }
+  }
+  last = now; requestAnimationFrame(frame);
+}
+function setPlaying(value) { playing = value; last = null; $('play').textContent = playing ? '暂停' : '播放'; }
+const canMessageParent = window.parent !== window && location.origin !== 'null';
+$('play').onclick = () => setPlaying(!playing);
+window.addEventListener('keydown', e => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, select, textarea') || e.target.isContentEditable) return;
+  if ((e.key === '1' || e.key === '2' || e.key === '3') && canMessageParent) {
+    e.preventDefault(); window.parent.postMessage({switchScreen: e.key}, location.origin);
+  } else if (e.code === 'Space' && e.target.tagName !== 'BUTTON') { e.preventDefault(); $('play').click(); }
+  else if (e.code === 'ArrowLeft') { e.preventDefault(); setT(Math.max(0, t - 2)); }
+  else if (e.code === 'ArrowRight') { e.preventDefault(); setT(Math.min(tEnd, t + 2)); }
+});
+window.addEventListener('message', e => {
+  if (!canMessageParent || e.origin !== location.origin || e.source !== window.parent || !e.data || e.data.type !== 'replay-control') return;
+  if (e.data.action === 'restart') { hoverX = latHover = timelineHover = null; $('tip').style.display = 'none'; setPlaying(true); setT(0); }
+  else if (e.data.action === 'pause') setPlaying(false);
+  else if (e.data.action === 'seek' && Number.isFinite(e.data.time)) {
+    hoverX = latHover = timelineHover = null; $('tip').style.display = 'none';
+    if (typeof e.data.paused === 'boolean') setPlaying(!e.data.paused);
+    last = null; setT(Math.max(0, Math.min(tEnd, e.data.time)));
+  }
+});
+window.addEventListener('resize', render);
+render(); requestAnimationFrame(frame);
+if (canMessageParent) window.parent.postMessage({type:'replay-ready'}, location.origin);
+})();
+</script>
+</body>
+</html>
