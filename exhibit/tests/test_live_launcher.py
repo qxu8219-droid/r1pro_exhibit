@@ -132,7 +132,8 @@ class LiveLaunchTests(unittest.TestCase):
         return ['sh',str(launcher.ROOT.parent/'start_live.sh'),
                 '--robot-ip','127.0.0.1','--robot-port',str(self.camera.server_port),
                 '--port',str(port),'--snapshot-file',str(self.snapshot),
-                '--db',str(self.root/'fleet.sqlite3'),'--no-browser','--no-ssh','--wait-seconds','1']
+                '--db',str(self.root/'fleet.sqlite3'),'--no-browser','--no-ssh',
+                '--robot-clock-offset','0','--wait-seconds','1']
 
     def start(self, port):
         log = (self.root/'launcher.log').open('ab')

@@ -1,0 +1,10 @@
+{
+  "robot_ip": "192.168.5.6",
+  "robot_user": "nvidia",
+  "ssh_port": 22,
+  "port": 8773,
+  "robot_clock_offset": "auto",
+  "services_script": "/home/nvidia/r1_exhibit_observer/auto-services/start_services.py",
+  "snapshot_file": "~/r1pro_live/verify-20261029-live/snapshot.json",
+  "db": "~/r1pro_live/verify-20261029-live/fleet.sqlite3"
+}

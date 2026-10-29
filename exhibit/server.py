@@ -12,6 +12,7 @@ from planner import Planner
 from evidence import EvidenceError, read_recording, read_telemetry
 from instance_identity import instance_identity
 from vla_evidence import VLAStore, unconfigured_state
+from robot_clock import robot_clock_offset as validate_robot_clock_offset
 
 
 class Runtime:
@@ -162,10 +163,17 @@ class Runtime:
             self.engine.close()
 
 
-def make_handler(runtime, telemetry_file=None, vla_store=None):
+def make_handler(runtime, telemetry_file=None, vla_store=None, robot_clock_offset=0.0):
+    robot_clock_offset = validate_robot_clock_offset(robot_clock_offset)
     identity = instance_identity(Path(__file__).resolve().parent, runtime.db_path,
                                  runtime.fleet_size, telemetry_file,
-                                 vla_db=vla_store.path if vla_store is not None else None)
+                                 vla_db=vla_store.path if vla_store is not None else None,
+                                 robot_clock_offset=robot_clock_offset)
+
+    def clock_diagnostic(result):
+        if robot_clock_offset:
+            result["robot_clock_offset_s"] = robot_clock_offset
+        return result
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "R1FleetExhibit/0.1"
@@ -205,7 +213,9 @@ def make_handler(runtime, telemetry_file=None, vla_store=None):
                 return self.json_response({"ok": True, "simulation": True,
                                            "fleet_size": runtime.fleet_size, "instance_identity": identity})
             if path == "/api/vla/state":
-                return self.json_response(vla_store.live() if vla_store is not None else unconfigured_state())
+                result = (vla_store.live(now=time.time() + robot_clock_offset)
+                          if vla_store is not None else unconfigured_state())
+                return self.json_response(clock_diagnostic(result))
             if path == "/api/vla/runs":
                 return self.json_response({"runs": vla_store.runs() if vla_store is not None else []})
             if path == "/api/vla/events":
@@ -235,7 +245,8 @@ def make_handler(runtime, telemetry_file=None, vla_store=None):
                 except EvidenceError as exc:
                     return self.json_response({"error": exc.code}, exc.status)
             if path == "/api/telemetry":
-                return self.json_response(read_telemetry(telemetry_file))
+                return self.json_response(clock_diagnostic(
+                    read_telemetry(telemetry_file, now=time.time() + robot_clock_offset)))
             if path == "/api/replays":
                 files = sorted(p.name for p in (static / "replays").glob("*.html")) if (static / "replays").is_dir() else []
                 return self.json_response({"replays": files})
@@ -305,6 +316,8 @@ def main():
     parser.add_argument("--interval", type=float, default=0.65, help="Wall-clock seconds per simulation tick")
     parser.add_argument("--telemetry-file", default=None, help="Read-only local JSON telemetry snapshot; never connects to a robot")
     parser.add_argument("--vla-db", default=None, help="Read-only VLA evidence SQLite database")
+    parser.add_argument("--robot-clock-offset", type=validate_robot_clock_offset, default=0.0,
+                        help="Robot clock minus viewer clock in seconds (-300 to 300); only adjusts live evidence age")
     args = parser.parse_args()
     if not 0.05 <= args.interval <= 10:
         parser.error("interval must be between 0.05 and 10 seconds")
@@ -312,7 +325,8 @@ def main():
     db.parent.mkdir(parents=True, exist_ok=True)
     runtime = Runtime(db, args.interval, fleet_size=args.fleet_size)
     vla_store = VLAStore(args.vla_db) if args.vla_db else None
-    server = ThreadingHTTPServer(("0.0.0.0", args.port), make_handler(runtime, telemetry_file=args.telemetry_file, vla_store=vla_store))
+    server = ThreadingHTTPServer(("0.0.0.0", args.port), make_handler(runtime, telemetry_file=args.telemetry_file,
+        vla_store=vla_store, robot_clock_offset=args.robot_clock_offset))
     print("R1 车队展示台: http://127.0.0.1:%d" % server.server_port, flush=True)
     print("Robot backend: simulator | Planner: explicit baseline (model optional)", flush=True)
     try:

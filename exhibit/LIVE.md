@@ -6,7 +6,7 @@
 
 ## 启动
 
-仅查看相机时，可直接运行项目根目录的 `./start_live.sh`（默认机器人 `172.18.21.239`）。它自动接收、校验快照，启动或复用展示服务，并打开实时观察。保持启动终端开启，Ctrl+C 停止本次启动的进程。`./start_live.sh --check` 只检查机器人画面；详细说明见项目根目录 `LIVE_START.txt`。相机只读取已有接口，不调用原相机启动脚本。独立VLA旁路未运行时可通过SSH启动新目录内的只读采集器；不修改机器人原有文件。`--no-ssh` 禁用远端启动，`--check` 始终只读。
+直接运行项目根目录的 `./start_live.sh` 即可一键接入当前相机与VLA证据。它读取根目录 `live_settings.json`（默认机器人 `192.168.5.6`、端口8773、沿用已有数据目录），先通过只读SSH测量当前时差；未配置免密SSH时会提示输入密码，不保存密码。它自动接收、校验快照，启动或复用展示服务，并打开实时观察。保持启动终端开启，Ctrl+C 停止本次启动的进程。`./start_live.sh --check` 只检查机器人画面；详细说明见项目根目录 `LIVE_START.txt`。默认services_script先检查两个数据端口，缺少时通过SSH调用独立新目录内的启动器，运行已有相机桥或只读VLA采集器。所有新增输出限定在auto-services子目录，不修改机器人原有文件，不启动运动。`--no-ssh` 禁用远端启动及自动测时，需显式指定 `--robot-clock-offset`；`--check` 不执行SSH且无写入，未指定偏差时按0检查。
 
 在项目根目录运行（路径替换成现场适配器实际写入的文件）：
 
@@ -14,7 +14,7 @@
 python3 exhibit/server.py --port 8771 --telemetry-file /absolute/path/robot_snapshot.json
 ```
 
-高级手动调用仍支持 `python3 exhibit/launcher.py --telemetry-file "/绝对路径"`；Windows 可使用 `py` 和 Windows 绝对路径。该内部启动器仅传入只读文件配置，不生成遥测文件。日常 Linux 唯一启动入口为根目录 `start_live.sh`。浏览器选择“展会主屏 → 实时观察”。
+高级手动调用仍支持 `python3 exhibit/launcher.py --telemetry-file "/绝对路径"`；Windows 可使用 `py` 和 Windows 绝对路径。该内部启动器仅传入只读文件配置，不生成遥测文件。日常 Linux 实时入口为根目录 `start_live.sh`；无需机器人或网络的离线备用入口为 `start_offline.sh`（默认8771）。浏览器选择“展会主屏 → 实时观察”。
 
 如果先单独启动服务，随后启动器必须传相同的实时文件配置才能复用；否则提示端口冲突。相对数据库或快照路径以 `exhibit/` 为基准，建议用绝对路径。
 
@@ -68,7 +68,7 @@ python3 exhibit/server.py --port 8771 --telemetry-file /absolute/path/robot_snap
 
 ## VLA 实时证据通道（独立于相机快照）
 
-相机 JSON 合同保持版本1和原三路图片。VLA 不写入相机快照，使用机器人只读 `:8774/events` 与本机独立 SQLite 事件库。`start_live.sh` 默认启动后台接收；旁路未接入时保留相机显示。机器人端只在新建的 `/home/nvidia/r1_exhibit_observer/` 中放置采集器和所有新增输出，端口未监听时启动器只调用该目录的 `start_observer.sh`。原机器人目录只读，原启动命令不变。`--no-ssh` 禁止任何远端启动，`--no-vla` 使用原相机模式，`--check`仍只读检查相机。
+相机 JSON 合同保持版本1和原三路图片。VLA 不写入相机快照，使用机器人只读 `:8774/events` 与本机独立 SQLite 事件库。`start_live.sh` 默认启动后台接收；旁路未接入时保留相机显示。机器人端只在新建的 `/home/nvidia/r1_exhibit_observer/` 中放置采集器和所有新增输出，启用services_script时，端口未监听则调用auto-services内的 `start_services.py`，该程序只启动缺少的相机桥或采集器；同目录含bridge.py和start_observer.sh。原机器人目录只读，原启动命令不变。`--no-ssh` 禁止任何远端启动，`--no-vla` 使用原相机模式，`--check`仍只读检查相机。
 
 手动服务可指定 `python3 server.py --port 8773 --telemetry-file /absolute/snapshot.json --vla-db /absolute/vla.sqlite3`。服务仅读本地已保存的证据，网络接收由启动器后台线程负责。VLA DB 是独立配置，不能复用没有此配置的旧服务。
 
@@ -91,3 +91,9 @@ python3 exhibit/server.py --port 8771 --telemetry-file /absolute/path/robot_snap
 旁路 health 的 `active_session_id` 明确当前会话。展示只从该会话选当前证据；新空会话返回 `waiting` 并清掉上一轮输出。初次连接不导入全部历史；观察期间见过的旧会话有界补读尾部、结束摘要和明确 operation 的输入。补采旧记录不会改变当前会话，也不会将晚到 NPZ 当作新的执行活动。
 
 旧会话连续120秒没有进展且没有未完成的有效输入等待后停止补读；缺少结束摘要或残缺日志明确记为 capture_gap。30秒图片读取超时会先记录缺失，在有效补读窗口内文件完成后仍可补齐。原始机器人文件始终只读。
+
+## 显式时差校正
+
+新IP为 `192.168.5.6`。`start_live.sh`、`launcher.py`、`server.py` 支持 `--robot-clock-offset <秒>`，含义为机器人时钟减去本机时钟，内部启动器默认0，必须为有限数且绝对值不超过300。一键入口默认由 `live_settings.json` 选择自动测时，显式命令行数值可覆盖；三次测时排除SSH认证耗时并选最短往返的保守上界，认证/输出超时或异常均退出，不借用观测时间代替当前系统时间。相机接收校验及两个实时状态API均以 `本机当前时间 + offset` 判断源数据年龄；原始字节、observed_at、事件时间、RTT与回放不变。非零配置在实时API中返回 `robot_clock_offset_s`，服务身份也包含此配置，防止复用时差不同的实例。
+
+仅使用实测偏差，不修改系统时钟或生产者时间戳。源时钟同步后应恢复0；旧/未来数据仍受原新鲜度规则检查。

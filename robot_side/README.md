@@ -76,3 +76,17 @@ python3 -m unittest discover -s robot_side/tests -v
 ```
 
 测试只使用临时目录、合成日志/NPZ 和隔离本机 HTTP。启动测试仅建立并清理自己创建的本机观察器进程，不操作机器人或其他进程。
+
+## 相机桥与采集器一起按需启动
+
+2026-10-29用户授权后新增 `start_services.py`。部署时只把本目录的 `start_services.py`、`start_observer.sh`、`bridge.py` 放入机器人新增目录 `/home/nvidia/r1_exhibit_observer/auto-services/`；不修改原机器人项目。
+
+本机live_settings.json的services_script已指向该文件。机器人重启后再次运行本机start_live.sh，将自动检查8772/8774，缺少时最多调用一次启动器。已有监听不重启；健康身份核对不通过则报冲突；空相机快照有界等待后报waiting，不伪装ready。独立目录锁串行化并发启动。
+
+相机调用现有 `/home/nvidia/r1pro_ws/vision_event_capture/live_stream/run_live_bridge.sh`，输出snapshot、日志、PID、ROS_HOME、ROS_LOG_DIR、XDG_CACHE_HOME、GST_REGISTRY及TMPDIR都在新run子目录。VLA调用同目录start_observer.sh并把VLA_OBSERVER_ROOT设到该run/vla。每次需要启动新服务均创建唯一run目录，旧记录保留。没有任何机器人控制、模型隧道或运动启动命令。
+
+机器人端手动诊断（已经授权部署后）：
+```bash
+python3 -B /home/nvidia/r1_exhibit_observer/auto-services/start_services.py
+```
+默认相机8772、VLA8774，参数`--camera-port`、`--vla-port`、`--camera-only`、`--startup-timeout`可指定。JSON status=ready代表HTTP身份与三图存在通过，图像新鲜度仍由本机接收器校验；waiting/conflict/error返回非零且不杀已有进程。

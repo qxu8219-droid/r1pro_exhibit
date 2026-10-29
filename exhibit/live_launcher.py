@@ -24,10 +24,50 @@ from evidence import (FRESH_SECONDS, MAX_TELEMETRY_BYTES, _check_finite,
 from launcher import LaunchError, NoRedirect, ensure_server, open_browser, stop_owned_server
 from vla_evidence import VLAStore
 from vla_receiver import Receiver
+from robot_clock import robot_clock_offset as validate_robot_clock_offset
 
 
 class LiveError(ValueError):
     pass
+
+
+def _validate_services_parameters(robot_ip, robot_user, ssh_port, script, camera_port, vla_port):
+    try:
+        address = str(ipaddress.ip_address(robot_ip))
+    except ValueError as exc:
+        raise LiveError("采集服务机器人 IP 无效。") from exc
+    if not isinstance(robot_user, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", robot_user):
+        raise LiveError("采集服务 SSH 用户名无效。")
+    if not all(type(port) is int and 1 <= port <= 65535 for port in (ssh_port, camera_port, vla_port)):
+        raise LiveError("采集服务端口必须在 1 到 65535 之间。")
+    if (not isinstance(script, str) or not script.startswith("/")
+            or any(ord(char) < 32 or ord(char) == 127 for char in script)):
+        raise LiveError("采集服务启动脚本必须是有效的绝对路径。")
+    return address
+
+
+def start_remote_services(robot_ip, robot_user="nvidia", ssh_port=22, script=None,
+                          camera_port=8772, vla_port=8774, camera_only=False):
+    """Invoke the opt-in service supervisor once, without restarting remote processes."""
+    address = _validate_services_parameters(robot_ip, robot_user, ssh_port, script, camera_port, vla_port)
+    ssh = shutil.which("ssh")
+    if ssh is None:
+        raise LiveError("电脑未找到 SSH 客户端；请安装 OpenSSH，或用 --no-ssh 接收已有采集服务。")
+    command = "python3 -B %s --camera-port %d --vla-port %d" % (shlex.quote(script), camera_port, vla_port)
+    if camera_only:
+        command += " --camera-only"
+    arguments = [ssh, "-T", "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=5",
+                 "-o", "ServerAliveCountMax=3", "-o", "StrictHostKeyChecking=ask",
+                 "-p", str(ssh_port), robot_user + "@" + address, command]
+    print("通过 SSH 启动独立目录中的相机与只读 VLA 采集服务；不启动动作。", flush=True)
+    try:
+        result = subprocess.run(arguments, timeout=60)
+    except subprocess.TimeoutExpired as exc:
+        raise LiveError("采集服务 SSH 启动等待超时；请检查认证、网络和机器人脚本输出。不会重启已有服务。") from exc
+    except OSError as exc:
+        raise LiveError("无法运行采集服务 SSH：%s" % exc) from exc
+    if result.returncode:
+        raise LiveError("机器人采集服务启动失败（SSH/脚本退出码 %s），请查看上方输出。" % result.returncode)
 
 
 def start_remote_observer(robot_ip, user="nvidia", ssh_port=22,
@@ -113,8 +153,9 @@ def start_remote_bridge(robot_ip, robot_user="nvidia", ssh_port=22,
         raise LiveError("机器人相机桥启动失败（SSH/脚本退出码 %s），请查看上方输出。" % result.returncode)
 
 
-def fetch_snapshot(url, timeout=3):
+def fetch_snapshot(url, timeout=3, robot_clock_offset=0.0):
     """Read and validate one source observation without changing its bytes or clock."""
+    robot_clock_offset = validate_robot_clock_offset(robot_clock_offset)
     try:
         with build_opener(ProxyHandler({}), NoRedirect()).open(url, timeout=timeout) as response:
             raw = response.read(MAX_TELEMETRY_BYTES + 1)
@@ -127,7 +168,7 @@ def fetch_snapshot(url, timeout=3):
         state = _telemetry_state(data)
         if not all(state["images"].get(key) for key in ("head", "wrist_left", "wrist_right")):
             raise LiveError("等待头部、左腕、右腕三路有效相机画面。")
-        if not 0 <= time.time() - state["observed_at"] <= FRESH_SECONDS:
+        if not 0 <= time.time() + robot_clock_offset - state["observed_at"] <= FRESH_SECONDS:
             raise LiveError("机器人画面已过期或时间超前；请检查画面更新和两端时钟。")
         return raw
     except LiveError:
@@ -170,9 +211,11 @@ def receiver_lock(path):
             fcntl.flock(stream, fcntl.LOCK_UN)
 
 
-def main(argv=None):
+def build_parser():
     parser = argparse.ArgumentParser(description="接收机器人三路相机画面并启动本地实时展示")
-    parser.add_argument("--robot-ip", default="172.18.21.239")
+    parser.add_argument("--robot-ip", default="192.168.5.6")
+    parser.add_argument("--robot-clock-offset", type=validate_robot_clock_offset, default=0.0,
+                        help="机器人时钟减去本机时钟的秒数（-300 到 300）；不改写原始时间戳")
     parser.add_argument("--robot-port", type=int, default=8772)
     parser.add_argument("--vla-port", type=int, default=8774, help="只读 VLA 事件旁路端口")
     parser.add_argument("--vla-db", help="VLA 记录数据库；默认位于相机快照旁的 vla.sqlite3")
@@ -183,6 +226,8 @@ def main(argv=None):
     parser.add_argument("--ssh-port", type=int, default=22, help="机器人 SSH 端口")
     parser.add_argument("--bridge-script", default="/home/nvidia/r1pro_ws/vision_event_capture/live_stream/start_bridge.sh",
                         help="机器人上已经安装的相机桥启动脚本绝对路径")
+    parser.add_argument("--services-script", default=None,
+                        help="可选：机器人独立采集目录内的服务启动 Python 脚本绝对路径")
     parser.add_argument("--no-ssh", action="store_true", help="只接收已有画面，不尝试启动机器人相机桥")
     parser.add_argument("--port", type=int, default=8771)
     parser.add_argument("--snapshot-file", default=str(Path.home() / "r1pro_live" / "snapshot.json"))
@@ -190,6 +235,11 @@ def main(argv=None):
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--check", action="store_true", help="只检查远端三路画面，不写文件或启动本地服务")
     parser.add_argument("--wait-seconds", type=float, default=40)
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
     args = parser.parse_args(argv)
     try:
         address = ipaddress.ip_address(args.robot_ip)
@@ -199,6 +249,12 @@ def main(argv=None):
         parser.error("端口必须在 1 到 65535 之间")
     if not math.isfinite(args.wait_seconds) or args.wait_seconds < 0:
         parser.error("--wait-seconds 必须为有限非负秒数")
+    if args.services_script is not None:
+        try:
+            _validate_services_parameters(args.robot_ip, args.robot_user, args.ssh_port,
+                                          args.services_script, args.robot_port, args.vla_port)
+        except LiveError as exc:
+            parser.error(str(exc))
     host = "[%s]" % address if address.version == 6 else str(address)
     source = "http://%s:%d/snapshot" % (host, args.robot_port)
     snapshot = Path(args.snapshot_file).expanduser().resolve()
@@ -214,7 +270,7 @@ def main(argv=None):
 
     try:
         if args.check:
-            fetch_snapshot(source)
+            fetch_snapshot(source, robot_clock_offset=args.robot_clock_offset)
             print("检查通过：头部、左腕、右腕画面有效且新鲜。", flush=True)
             return 0
         for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -225,12 +281,19 @@ def main(argv=None):
             # it through the just-released receiver lock.
             resources.callback(stop_server)
             print("等待机器人三路实时画面：" + source, flush=True)
-            # Original robot files/processes are outside this feature's write scope.
-            # Only connect to the existing camera interface; never invoke its scripts.
+            # Startup is opt-in, only once, and based on listening ports rather
+            # than snapshot freshness. The remote supervisor also rechecks ports.
+            if (args.services_script is not None and not args.no_ssh
+                    and (not bridge_reachable(str(address), args.robot_port)
+                         or (not args.no_vla and not bridge_reachable(str(address), args.vla_port)))):
+                start_remote_services(str(address), args.robot_user, args.ssh_port,
+                                      args.services_script, args.robot_port, args.vla_port,
+                                      camera_only=args.no_vla)
             deadline, last_error = time.monotonic() + args.wait_seconds, None
             while True:
                 try:
-                    raw = fetch_snapshot(source, timeout=min(3, max(.1, deadline - time.monotonic())))
+                    raw = fetch_snapshot(source, timeout=min(3, max(.1, deadline - time.monotonic())),
+                                         robot_clock_offset=args.robot_clock_offset)
                     atomic_write(snapshot, raw)
                     break
                 except LiveError as exc:
@@ -244,7 +307,8 @@ def main(argv=None):
             vla_path = None
             if not args.no_vla:
                 vla_path = Path(args.vla_db).expanduser().resolve() if args.vla_db else snapshot.with_name("vla.sqlite3")
-                if not args.no_ssh and not bridge_reachable(str(address), args.vla_port):
+                if (args.services_script is None and not args.no_ssh
+                        and not bridge_reachable(str(address), args.vla_port)):
                     try:
                         start_remote_observer(str(address), args.robot_user, args.ssh_port,
                                               args.vla_bridge_script, args.vla_port)
@@ -256,7 +320,8 @@ def main(argv=None):
                 receiver = Receiver("http://%s:%d" % (host, args.vla_port), vla_store)
                 resources.callback(receiver.close)
                 receiver.start()
-            owned = ensure_server(args.port, args.db, telemetry_file=snapshot, vla_db=vla_path)
+            owned = ensure_server(args.port, args.db, telemetry_file=snapshot, vla_db=vla_path,
+                                  robot_clock_offset=args.robot_clock_offset)
             url = "http://127.0.0.1:%d/?source=live" % args.port
             print("\nR1 实时展示：" + url, flush=True)
             print("三路画面已接入；保持此窗口开启，按 Ctrl+C 停止本次接收器。", flush=True)
@@ -272,7 +337,7 @@ def main(argv=None):
                     raise LaunchError("本次启动的展示服务已退出（退出码 %s）。" % owned.returncode)
                 started = time.monotonic()
                 try:
-                    atomic_write(snapshot, fetch_snapshot(source))
+                    atomic_write(snapshot, fetch_snapshot(source, robot_clock_offset=args.robot_clock_offset))
                     if last_error is not None:
                         print("实时画面接收已恢复。", flush=True)
                     last_error = None

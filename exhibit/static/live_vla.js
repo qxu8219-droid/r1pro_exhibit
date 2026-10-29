@@ -95,7 +95,8 @@ window.LiveVLA = (() => {
     put('live-vla-target', vector(x.target23) ? `累计下发：${issued ? x.issued_steps : '未知'} 步 · chunk ${x.chunk ?? '未知'} / step ${x.step ?? '未知'}\n${json(x.target23)}` : '本次运行尚无下发目标记录');
     put('live-vla-feedback', vector(x.feedback23) ? `${feedbackLabel} · 采样 ${stamp(x.feedback_at)}\n${json(x.feedback23)}` : '本次运行尚无反馈记录');
     put('live-vla-verification', `${lifecycle.join('；')}\n任务结果：待独立核验${verification.reason ? '\n原因：' + verification.reason : ''}\n${Array.isArray(verification.evidence) && verification.evidence.length ? json(verification.evidence) : '本次运行尚无结果证据'}`);
-    put('live-vla-source', `阶段：${s.phase || '未知'}${s.reason ? '\n原因：' + s.reason : ''}\n${s.legacy ? '旧日志：缺少生命周期时不推测' : '事件通道'}\n最后事件：${stamp(s.last_event_at)} · 年龄 ${finite(envelope.age_s) ? envelope.age_s.toFixed(1) + ' s' : '未知'}\n${json(s.stats || {})}`);
+    const clockNote = finite(envelope.robot_clock_offset_s) && envelope.robot_clock_offset_s !== 0 ? `\n机器人时差校正：${envelope.robot_clock_offset_s > 0 ? '+' : ''}${envelope.robot_clock_offset_s} s（源时间戳保留）` : '';
+    put('live-vla-source', `阶段：${s.phase || '未知'}${s.reason ? '\n原因：' + s.reason : ''}\n${s.legacy ? '旧日志：缺少生命周期时不推测' : '事件通道'}\n最后事件：${stamp(s.last_event_at)} · 年龄 ${finite(envelope.age_s) ? envelope.age_s.toFixed(1) + ' s' : '未知'}\n${json(s.stats || {})}${clockNote}`);
     requestImages(r);
   }
   async function poll(token) {

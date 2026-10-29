@@ -1,0 +1,56 @@
+完整演示一键启动：隧道 + 展示采集 + 原VLA执行 + 展示台
+
+入口：start_robot_and_live.sh
+注意：这个入口会调用原 start.sh --enable-motion，实际驱动机器人。请先准备现场。
+
+运行：
+  /home/xq/work/show/R1_Exhibit_v3/start_robot_and_live.sh
+
+启动前只读检查（不会建立模型隧道、启动采集、展示或运动）：
+  /home/xq/work/show/R1_Exhibit_v3/start_robot_and_live.sh --check
+只读检查反映当前已运行的服务状态；没有现成隧道时检查可能不通过，正常启动会尝试建立隧道。
+
+前置条件
+- 机器人开机，展示电脑能够SSH登录；当前IP来自live_settings.json。
+- 模型服务已经在模型主机100.105.13.29的127.0.0.1:18118运行。
+  本入口只连接模型，没有模型服务器启动命令，不会猜测或启动模型进程。
+- 机器人可以SSH登录ksadmin@100.105.13.29。沿用已有密钥或终端密码输入，不保存密码。
+- 新辅助程序只部署在 /home/nvidia/r1_exhibit_observer/full-demo/；原机器人程序与配置保持不变。
+
+执行顺序
+1. 连接机器人，读取当前时差。
+2. 在机器人侧检查18128隧道。可用则复用；缺少时执行用户提供的SSH端口转发。
+3. 接收模型WebSocket服务信息并核对原manifest中的模型身份；仅端口监听不算模型就绪。
+4. 检查并恢复相机桥和只读VLA采集器，验证三路新鲜图像及采集源确实接入展示电脑。
+5. 打开本机展示页面。
+6. 没有现成执行客户端时，运行一次用户提供的原命令；沿用原程序内部循环，不添加自动重启。
+   若同事已经启动执行客户端，则仅展示已有运行，不接管或停止同事的程序。
+
+机器人侧使用的原命令
+  ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+    -L 127.0.0.1:18128:127.0.0.1:18118 ksadmin@100.105.13.29
+为管理自己创建的隧道，辅助程序另外使用-f、独立ControlMaster socket和独立known_hosts副本。
+不会改机器人原~/.ssh/known_hosts，已存在的隧道不关闭。
+
+  cd /home/nvidia/deformable-objects/robot_home/flexible_coordinator
+  export B041_POLICY_URL=ws://127.0.0.1:18128
+  export VLA_PYTHON=/home/nvidia/vla_deploy/venv/bin/python3
+  export ROBOT_CONFIG="$PWD/robot239_config.json"
+  bash start.sh --enable-motion
+
+退出
+- 保持启动终端开启。Ctrl+C请求本次拥有的执行客户端按原流程取消，等待停止确认。
+- 不强杀运动控制进程，不自动重启运动。网络断开或缺少停止确认时会报告状态未知，需现场核对。
+- 完整入口在运动期间发送心跳；机器人辅助程序收不到心跳时请求原程序正常取消。
+- 退出只清理本次拥有的展示/连接/可释放隧道；复用的进程不接管，采集服务保留。
+- 原执行程序仍按自身正常行为写runtime日志；新增辅助日志、隧道文件及状态都在新full-demo目录。
+
+配置
+- live_settings.json：机器人IP、展示端口与本机数据路径。
+- full_demo_settings.json：用户提供的隧道参数、原执行路径和新增辅助程序路径。
+- 更换机器人IP只需修改live_settings.json，不要在配置中保存密码。
+
+三个入口
+- start_robot_and_live.sh：完整演示，包含真实运动。
+- start_live.sh：相机与VLA证据展示，不启动执行客户端或模型隧道。
+- start_offline.sh：离线记录回放与四机模拟。

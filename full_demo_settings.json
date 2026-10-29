@@ -1,0 +1,11 @@
+{
+  "remote_script": "/home/nvidia/r1_exhibit_observer/full-demo/full_session.py",
+  "coordinator_dir": "/home/nvidia/deformable-objects/robot_home/flexible_coordinator",
+  "robot_config": "/home/nvidia/deformable-objects/robot_home/flexible_coordinator/robot239_config.json",
+  "vla_python": "/home/nvidia/vla_deploy/venv/bin/python3",
+  "services_script": "/home/nvidia/r1_exhibit_observer/auto-services/start_services.py",
+  "tunnel_host": "100.105.13.29",
+  "tunnel_user": "ksadmin",
+  "tunnel_local_port": 18128,
+  "tunnel_remote_port": 18118
+}

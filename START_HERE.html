@@ -21,7 +21,7 @@
   <p class="lead">这份交付包让同学在本机完成熟悉、讲解和循环展示。先看真实动作记录，再看同一时刻的模型细节，最后用四机模拟说明一辆物资车怎样交接、遇到中断怎样恢复。</p>
   <div class="pills"><span class="pill">Python 3.9+ · 无需 pip</span><span class="pill">本地 Chrome / Edge</span><span class="pill">离线运行 · 无需 API 或密钥</span><span class="pill">推荐 1920 × 1080 · 单屏</span></div>
   <p><a href="R1_Exhibition_Handbook.docx">下载可编辑的 6 页 Word 交接手册</a></p>
-  <div class="actions"><a class="button" href="http://127.0.0.1:8771/" target="_blank" rel="noopener">启动后，打开展示台 ↗</a><a class="button secondary" href="exhibit/static/replays/replay_live_run_20261019T093806212123Z.html" target="_blank" rel="noopener">无需启动，直接看回放 ↗</a></div>
+  <div class="actions"><a class="button" href="http://127.0.0.1:8773/" target="_blank" rel="noopener">启动后，打开展示台 ↗</a><a class="button secondary" href="exhibit/static/replays/replay_live_run_20261019T093806212123Z.html" target="_blank" rel="noopener">无需启动，直接看回放 ↗</a></div>
   <p class="small muted">本手册可直接双击打开。完整展示先按下方方法启动；“直接看回放”只播放详细记录，不含主屏与四机模拟。</p>
 </section>
 
@@ -29,11 +29,13 @@
   <h2>01 · 先启动，再看效果</h2>
   <p class="muted">把 ZIP <strong>完整解压</strong>到可写的本地文件夹，例如桌面。保持文件夹结构，提前在展台电脑安装 Python 3.9+ 和 Chrome 或 Edge；交付包不附带这些软件。</p>
   <div class="grid">
-    <div class="card"><span class="stepnum">唯一启动入口</span><h3>运行 start_live.sh</h3><pre><code>./start_live.sh</code></pre><p>当前 Linux 环境默认连接 172.18.21.239，自动接收相机并进入实时观察。保持终端开启。</p></div>
+    <div class="card"><span class="stepnum">实时观察入口</span><h3>运行 start_live.sh</h3><pre><code>./start_live.sh</code></pre><p>无需附加参数。自动读取 live_settings.json（当前机器人 192.168.5.6、端口8773），只读测量时差，按需启动缺少的展示采集服务，接收相机和VLA证据并打开实时观察；如SSH提示则输入密码。保持终端开启。</p></div>
     <div class="card"><span class="stepnum">启动前提</span><h3>读取相机与VLA日志</h3><p>只读VLA旁路未运行时，通过SSH启动独立新目录里的采集器；按提示输入密码。原机器人文件和启动命令不变，相机接口只读。</p></div>
     <div class="card"><span class="stepnum">使用说明</span><h3>诊断与退出</h3><pre><code>./start_live.sh --check</code></pre><p>只检查画面。正常启动后 Ctrl+C 退出。完整步骤见 <a href="LIVE_START.txt">LIVE_START.txt</a>。</p></div>
   </div>
-  <div class="note"><strong>start_live.sh 打开三路相机的“实时观察”；右侧接收独立 VLA 执行证据。</strong> 页面进入展会主屏，来源也可切换至原有“真实运行记录”。本机地址为 <a href="http://127.0.0.1:8771/">http://127.0.0.1:8771/</a>；局域网同事访问 <code>http://服务电脑的局域网IPv4:8771/</code>。讲解前先关闭顶部“自动轮播”。首次接入与只读旁路说明见 <a href="LIVE_START.txt">LIVE_START.txt</a>。</div>
+  <div class="note"><strong>需要自动建立模型隧道并执行技能时：<code>./start_robot_and_live.sh</code>。</strong> 此入口包含真实机器人运动，需先准备现场。模型服务器仍须预先运行。启动前可用 <code>--check</code> 做只读检查，见 <a href="FULL_START.txt">完整启动说明</a>。</div>
+  <div class="note"><strong>网络不稳定时：运行 <code>./start_offline.sh</code>。</strong> 无需机器人、SSH或外网，自动打开原真实记录主屏，保留车队模拟与模型推理回放。地址为 <a href="http://127.0.0.1:8771/">http://127.0.0.1:8771/</a>。见 <a href="OFFLINE_START.txt">离线启动说明</a>。</div>
+  <div class="note"><strong>start_live.sh 打开三路相机的“实时观察”；右侧接收独立 VLA 执行证据。</strong> 页面进入展会主屏，来源也可切换至原有“真实运行记录”。本机地址为 <a href="http://127.0.0.1:8773/">http://127.0.0.1:8773/</a>；局域网同事访问 <code>http://服务电脑的局域网IPv4:8773/</code>。讲解前先关闭顶部“自动轮播”。首次接入与只读旁路说明见 <a href="LIVE_START.txt">LIVE_START.txt</a>。</div>
   <div class="grid">
     <figure class="preview"><a href="exhibit/preview_showcase_1920x1080.png" target="_blank"><img src="exhibit/preview_showcase_1920x1080.png" alt="展会主屏预览：三路相机与动作证据"></a><figcaption><strong><kbd>3</kbd> 展会主屏</strong>先看相机输入、模型输出与下发反馈；四个章节可快速定位。</figcaption></figure>
     <figure class="preview"><a href="exhibit/preview_replay_1920x1080.png" target="_blank"><img src="exhibit/preview_replay_1920x1080.png" alt="详细回放预览：相机、预测和执行曲线"></a><figcaption><strong><kbd>2</kbd> 模型推理回放</strong>看当前段 32 步预测、已下发目标、反馈和请求时延。</figcaption></figure>
@@ -99,8 +101,8 @@
 <section id="help">
   <h2>06 · 现场遇到问题，按这里处理</h2>
   <details class="card faq" open><summary>启动不成功，或提示没有 Python</summary><p>完整解压到可写文件夹后再启动，不在 ZIP 预览里运行。可先双击 <code>check.bat</code>（Windows），或在包根运行 <code>sh check.sh</code>（Linux / Mac）；它只检查 Python 与文件完整性，不启动展示。</p><p>完整展示需要 Python 3.9+；Windows 可在终端查 <code>py -3 --version</code> 或 <code>python --version</code>，Linux / Mac 查 <code>python3 --version</code>。Windows 若未加入 PATH，重新运行 Python 安装程序补选后重开终端。</p><p>现场暂时没有 Python：双击 <a href="exhibit/static/replays/replay_live_run_20261019T093806212123Z.html">第一条详细回放 HTML</a>，可离线循环播放；这条备用路径没有车队或主屏。</p></details>
-  <details class="card faq" open><summary>端口 8771 被占用，或打开了旧版本</summary><p>在包根终端改用空闲端口。启动器不会替你结束其他程序；只有同目录、数据库与实时配置匹配的服务才能复用。另一份旧交付包正在运行时，可直接换端口启动这一份。</p><pre><code>./start_live.sh --port 8772</code></pre><p>此时手动打开 <a href="http://127.0.0.1:8772/">http://127.0.0.1:8772/</a>。若想回到 8771，在原启动终端 Ctrl+C 退出旧服务，再重新启动本包。</p></details>
-  <details class="card faq"><summary>浏览器白屏、相机不出现或服务无法连接</summary><p>确认启动终端还开着且没有错误；本机使用 <code>http://127.0.0.1:端口/</code>，局域网同事使用 <code>http://服务电脑的局域网IPv4:端口/</code>，默认端口为 8771。同事电脑上的 127.0.0.1 指向同事自己的电脑。不要直接双击 <code>exhibit/static/index.html</code>，完整页面需要服务。</p><p>主屏来源选“真实运行记录”，等几秒；然后刷新。Windows / Linux 可 Ctrl+Shift+R，Mac 可 ⌘Shift+R。仍异常时关闭展示窗口、在启动终端 Ctrl+C、重新启动。期间先用独立详细回放作为备用。</p></details>
+  <details class="card faq" open><summary>端口 8773 被占用，或打开了旧版本</summary><p>在包根终端改用空闲端口。启动器不会替你结束其他程序；只有同目录、数据库与实时配置匹配的服务才能复用。另一份旧交付包正在运行时，可直接换端口启动这一份。</p><pre><code>./start_live.sh --port 8772</code></pre><p>此时手动打开 <a href="http://127.0.0.1:8772/">http://127.0.0.1:8772/</a>。若想回到 8773，在原启动终端 Ctrl+C 退出旧服务，再重新启动本包。</p></details>
+  <details class="card faq"><summary>浏览器白屏、相机不出现或服务无法连接</summary><p>确认启动终端还开着且没有错误；本机使用 <code>http://127.0.0.1:端口/</code>，局域网同事使用 <code>http://服务电脑的局域网IPv4:端口/</code>，默认端口为 8773。同事电脑上的 127.0.0.1 指向同事自己的电脑。不要直接双击 <code>exhibit/static/index.html</code>，完整页面需要服务。</p><p>主屏来源选“真实运行记录”，等几秒；然后刷新。Windows / Linux 可 Ctrl+Shift+R，Mac 可 ⌘Shift+R。仍异常时关闭展示窗口、在启动终端 Ctrl+C、重新启动。期间先用独立详细回放作为备用。</p></details>
   <details class="card faq"><summary>车队停在 UNKNOWN / 待核对，或者不动了</summary><p>按 <kbd>1</kbd> 看执行记录。若为掉线或待核对，点“恢复并核对”，必要时再点“开始运行”；这是模拟状态核验。重启时保存的未完成动作也可能进入待核对。</p><p>只想从头展示：选“规则调度”及“标准交接”→“重置”→“开始运行”。重置会清掉本地这一轮模拟进度；真实回放记录不变。再勾“自动演示”可继续自动换场景。</p></details>
   <details class="card faq"><summary>显示模型未配置，或模型调度报错</summary><p>交付默认用“规则调度”，不需要模型、API、密钥或网络。误切“模型调度”时，切回“规则调度”，再重置、开始即可。</p><p>需要真实模型实验时由技术同学按 <a href="exhibit/MODEL.md">exhibit/MODEL.md</a> 配置并提前验证。当前接口输入是模拟世界状态与候选动作 JSON，不含相机；接模型后也不能直接称为医院视觉推理。端点配置有效不等于模型已连通。</p></details>
   <details class="card faq"><summary>怎么退出、重启，哪些进度会保留？</summary><p>Windows / Linux 用 Alt+F4 关闭全屏展示，Mac 用 ⌘W。再到启动终端按 Ctrl+C 停止本次启动的服务；只关浏览器不会停止后台服务。</p><p>如果终端提示“复用现有展示服务”，服务属于最初的启动窗口，去那个窗口停止。重启仍用原启动脚本；模拟数据库保存上一轮状态，想重新讲解就到车队页“重置”。回放文件是静态记录，重启不改变内容。</p></details>
